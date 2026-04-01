@@ -1,7 +1,9 @@
 package runtime
 
 import (
+	"errors"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -13,6 +15,13 @@ type Context struct {
 }
 
 func NewContext(startDir string) (Context, error) {
+	if repoRoot, ok := repoRootFromEnv(); ok {
+		return Context{
+			RepoRoot: repoRoot,
+			OS:       DetectOS(),
+		}, nil
+	}
+
 	if startDir == "" {
 		var err error
 		startDir, err = os.Getwd()
@@ -30,6 +39,26 @@ func NewContext(startDir string) (Context, error) {
 		RepoRoot: repoRoot,
 		OS:       DetectOS(),
 	}, nil
+}
+
+func repoRootFromEnv() (string, bool) {
+	for _, key := range []string{"DFL_ROOT", "DOTF"} {
+		value := os.Getenv(key)
+		if value == "" {
+			continue
+		}
+
+		absValue, err := filepath.Abs(value)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(absValue); errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		return absValue, true
+	}
+
+	return "", false
 }
 
 func DetectOS() OSType {

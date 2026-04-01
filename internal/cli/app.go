@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
+	"dfl/internal/install"
 	"dfl/internal/runtime"
 )
 
@@ -56,7 +58,13 @@ func (a *App) Run(args []string) (int, error) {
 	case "setup":
 		return runPlaceholder(stdout, "setup", rest)
 	case "install", "i":
-		return runPlaceholder(stdout, "install", rest)
+		runner := install.Runner{Stdout: stdout, Stderr: stderr}
+		code, err := runner.Install(ctx, rest)
+		if err != nil && errors.Is(err, install.ErrManifestInstallNotImplemented) {
+			fmt.Fprintln(stderr, err)
+			return 1, nil
+		}
+		return code, err
 	case "pkg":
 		return runPlaceholder(stdout, "pkg", rest)
 	case "os":

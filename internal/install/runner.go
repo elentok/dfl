@@ -1,0 +1,84 @@
+package install
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+
+	"dfl/internal/components"
+	runtimectx "dfl/internal/runtime"
+)
+
+var ErrManifestInstallNotImplemented = errors.New("manifest install is not implemented yet")
+
+type Runner struct {
+	Stdout io.Writer
+	Stderr io.Writer
+}
+
+func (r Runner) Install(ctx runtimectx.Context, names []string) (int, error) {
+	if len(names) == 0 {
+		return 2, errors.New("install requires at least one component")
+	}
+
+	stdout := r.Stdout
+	if stdout == nil {
+		stdout = io.Discard
+	}
+	stderr := r.Stderr
+	if stderr == nil {
+		stderr = io.Discard
+	}
+
+	for _, name := range names {
+		component, err := components.Resolve(ctx.RepoRoot, name)
+		if err != nil {
+			if errors.Is(err, components.ErrComponentNotFound) {
+				fmt.Fprintf(stderr, "component %q not found\n", name)
+				return 1, nil
+			}
+			return 1, err
+		}
+
+		fmt.Fprintf(stdout, "Installing %s (%s/%s)\n", component.Name, component.Kind, component.InstallerType)
+
+		if err := r.installComponent(ctx, component); err != nil {
+			fmt.Fprintf(stderr, "component %q failed: %v\n", component.Name, err)
+			return 1, nil
+		}
+
+		fmt.Fprintf(stdout, "component %q: success\n", component.Name)
+	}
+
+	return 0, nil
+}
+
+func (r Runner) installComponent(ctx runtimectx.Context, component components.Component) error {
+	switch component.InstallerType {
+	case components.InstallerScript:
+		return r.runScript(ctx, component)
+	case components.InstallerManifest:
+		return ErrManifestInstallNotImplemented
+	default:
+		return fmt.Errorf("unsupported installer type %q", component.InstallerType)
+	}
+}
+
+func (r Runner) runScript(ctx runtimectx.Context, component components.Component) error {
+	cmd := exec.Command(component.Entrypoint)
+	cmd.Dir = component.Root
+	cmd.Stdout = r.Stdout
+	cmd.Stderr = r.Stderr
+	cmd.Env = scriptEnv(ctx, component)
+	return cmd.Run()
+}
+
+func scriptEnv(ctx runtimectx.Context, component components.Component) []string {
+	env := os.Environ()
+	env = append(env, "DFL_ROOT="+ctx.RepoRoot)
+	env = append(env, "DFL_COMPONENT_ROOT="+component.Root)
+	env = append(env, "DOTF="+ctx.RepoRoot)
+	return env
+}

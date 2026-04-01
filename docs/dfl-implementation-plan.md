@@ -16,24 +16,24 @@ compatibility layer during migration.
 
 ## Step 1: Establish runtime skeleton
 
-- [ ] Create the Go CLI entrypoint and top-level command structure for `dfl`.
+- [x] Create the Go CLI entrypoint and top-level command structure for `dfl`.
 - [ ] Add command groups for `setup`, `install`, `pkg`, `os`, and the initial filesystem helpers.
-- [ ] Define shared runtime types for structured operation results: `success`, `skipped`, `failed`.
-- [ ] Define shared context types for repo root, component info, OS detection, and dry-run mode.
-- [ ] Implement repo-root discovery rules and confirm they work from nested working directories.
-- [ ] Add a minimal smoke test covering CLI startup and repo-root resolution.
+- [x] Define shared runtime types for structured operation results: `success`, `skipped`, `failed`.
+- [x] Define shared context types for repo root, component info, OS detection, and dry-run mode.
+- [x] Implement repo-root discovery rules and confirm they work from nested working directories.
+- [x] Add a minimal smoke test covering CLI startup and repo-root resolution.
 
 ## Step 2: Implement component discovery and install execution
 
-- [ ] Implement component resolution for `core/<name>/install.toml`, `core/<name>/install`,
+- [x] Implement component resolution for `core/<name>/install.toml`, `core/<name>/install`,
       `extra/<name>/install.toml`, and `extra/<name>/install`.
-- [ ] Return resolved component metadata: name, kind, root, installer type, entrypoint.
-- [ ] Implement `dfl install <component...>` with per-component execution and summary reporting.
-- [ ] Export the required script environment variables:
+- [x] Return resolved component metadata: name, kind, root, installer type, entrypoint.
+- [x] Implement `dfl install <component...>` with per-component execution and summary reporting.
+- [x] Export the required script environment variables:
       `DFL_ROOT`, `DFL_COMPONENT_ROOT`, and `DOTF`.
-- [ ] Execute shell installers from the component root.
-- [ ] Keep the initial default failure policy as stop-on-first-failure.
-- [ ] Add tests for successful resolution, missing components, and manifest-vs-script precedence.
+- [x] Execute shell installers from the component root.
+- [x] Keep the initial default failure policy as stop-on-first-failure.
+- [x] Add tests for successful resolution, missing components, and manifest-vs-script precedence.
 
 ## Step 3: Implement core runtime commands
 
