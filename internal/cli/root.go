@@ -37,13 +37,3 @@ func (a *App) newRootCommand() *cobra.Command {
 
 	return cmd
 }
-
-func (a *App) newSetupCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "setup",
-		Short: "Install the default machine setup",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return a.runPlaceholder("setup", args)
-		},
-	}
-}

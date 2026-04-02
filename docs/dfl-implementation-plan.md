@@ -75,17 +75,17 @@ compatibility layer during migration.
 
 ## Step 6: Implement `setup/default.toml` execution
 
-- [ ] Define setup-manifest support for:
+- [x] Define setup-manifest support for:
       `[repo_defaults]`, `[[components]]`, `[when]`, `[[packages]]`, `[[repos]]`, and `[[steps]]`.
-- [ ] Implement `dfl setup` to load `setup/default.toml`.
-- [ ] Execute setup manifests in a clear order:
+- [x] Implement `dfl setup` to load `setup/default.toml`.
+- [x] Execute setup manifests in a clear order:
       validate setup `[when]`, sync setup repos, install setup packages, run setup
       filesystem/actions, install selected components, run setup steps that belong after
       components if the final spec keeps that split.
-- [ ] Support `--component <name>` as a filter over the setup-manifest component entries.
-- [ ] Support `--skip-packages`.
-- [ ] Support `--skip-repos` as a skip for the setup-manifest `[[repos]]` phase.
-- [ ] Add tests for component filtering, repo filtering, dry-run behavior, and setup-level
+- [x] Support `--component <name>` as a filter over the setup-manifest component entries.
+- [x] Support `--skip-packages`.
+- [x] Support `--skip-repos` as a skip for the setup-manifest `[[repos]]` phase.
+- [x] Add tests for component filtering, repo filtering, dry-run behavior, and setup-level
       conditional execution.
 
 ## Step 7: Implement repo synchronization
