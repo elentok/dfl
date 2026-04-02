@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 
+	"dfl/internal/buildinfo"
+
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +30,7 @@ func (a *App) newVersionCommand() *cobra.Command {
 		Short: "Print the version",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Fprintln(a.stdoutWriter(), "dfl dev")
+			fmt.Fprintln(a.stdoutWriter(), buildinfo.Version)
 			return nil
 		},
 	}
