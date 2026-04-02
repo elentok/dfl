@@ -62,16 +62,16 @@ compatibility layer during migration.
 
 ## Step 5: Implement manifest parsing
 
-- [ ] Define Go structs for `install.toml` and `setup/default.toml`.
-- [ ] Parse `[when]`, `[symlinks]`, `[copies]`, `dirs`, `[[packages]]`, and `[[steps]]`.
-- [ ] Support `[[packages]]` fields:
+- [x] Define Go structs for `install.toml` and `setup/default.toml`.
+- [x] Parse `[when]`, `[symlinks]`, `[copies]`, `mkdirs`, `[[packages]]`, and `[[steps]]`.
+- [x] Support `[[packages]]` fields:
       `manager`, `names`, optional `tap`, optional `cask`, `when_os`,
       `when_linux_distro`, and `when_features`.
-- [ ] Support `[[steps]]` fields:
+- [x] Support `[[steps]]` fields:
       `name`, `os`, `if`, `if_not`, `cwd`, `sudo`, and `run`.
-- [ ] Define machine-context evaluation for OS, Linux distro, and feature tags.
-- [ ] Add validation errors for malformed manifests and unsupported manager names.
-- [ ] Add tests for parsing, condition filtering, and invalid manifest cases.
+- [x] Define machine-context evaluation for OS, Linux distro, and feature tags.
+- [x] Add validation errors for malformed manifests and unsupported manager names.
+- [x] Add tests for parsing, condition filtering, and invalid manifest cases.
 
 ## Step 6: Implement `setup/default.toml` execution
 

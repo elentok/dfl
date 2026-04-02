@@ -483,14 +483,14 @@ String-to-string map.
 
 Rules match `[symlinks]` but perform file copies instead.
 
-#### `[dirs]`
+#### `mkdirs`
 
 Array of paths or a table representation if options are added later.
 
 Initial simple form:
 
 ```toml
-dirs = [
+mkdirs = [
   "~/.config",
   "~/.local/share/applications",
 ]
@@ -574,7 +574,7 @@ Design rule:
 For a manifest-backed component, the default execution order is:
 
 1. validate `[when]`
-2. create `dirs`
+2. create `mkdirs`
 3. install `packages`
 4. apply `symlinks`
 5. apply `copies`
