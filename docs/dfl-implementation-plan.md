@@ -17,7 +17,7 @@ compatibility layer during migration.
 ## Step 1: Establish runtime skeleton
 
 - [x] Create the Go CLI entrypoint and top-level command structure for `dfl`.
-- [ ] Add command groups for `setup`, `install`, `pkg`, `os`, and the initial filesystem helpers.
+- [x] Add command groups for `setup`, `install`, `pkg`, `os`, and the initial filesystem helpers.
 - [x] Define shared runtime types for structured operation results: `success`, `skipped`, `failed`.
 - [x] Define shared context types for repo root, component info, OS detection, and dry-run mode.
 - [x] Implement repo-root discovery rules and confirm they work from nested working directories.
@@ -37,14 +37,14 @@ compatibility layer during migration.
 
 ## Step 3: Implement core runtime commands
 
-- [ ] Implement `dfl os is-mac`, `dfl os is-linux`, `dfl os is-wsl`, and `dfl has-command`.
-- [ ] Implement `dfl step-start` and `dfl step-end`.
-- [ ] Implement `dfl shell <name> -- <command...>` with streamed output and exit-code propagation.
-- [ ] Implement `dfl symlink`, `dfl copy`, `dfl mkdir`, and `dfl backup`.
-- [ ] Implement backup behavior as `<target>.backup` first, then timestamped fallback on
+- [x] Implement `dfl os is-mac`, `dfl os is-linux`, `dfl os is-wsl`, and `dfl has-command`.
+- [x] Implement `dfl step-start` and `dfl step-end`.
+- [x] Implement `dfl shell <name> -- <command...>` with streamed output and exit-code propagation.
+- [x] Implement `dfl symlink`, `dfl copy`, `dfl mkdir`, and `dfl backup`.
+- [x] Implement backup behavior as `<target>.backup` first, then timestamped fallback on
       collision.
-- [ ] Implement dry-run-aware behavior for all of the above.
-- [ ] Add focused tests for no-op/skip behavior, backup naming, and dry-run output.
+- [x] Implement dry-run-aware behavior for all of the above.
+- [x] Add focused tests for no-op/skip behavior, backup naming, and dry-run output.
 
 ## Step 4: Implement package execution layer
 
