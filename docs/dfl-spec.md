@@ -344,7 +344,6 @@ and apt groups.
 - `dfl pkg npm install <pkg...>`
 - `dfl pkg pipx install <pkg...>`
 - `dfl pkg cargo install <pkg...>`
-- `dfl pkg mason install <pkg...>`
 - `dfl pkg snap install <pkg...>`
 
 Behavior:
@@ -521,7 +520,7 @@ names = ["eza"]
 
 Supported fields:
 
-- `manager`: required, for example `brew`, `apt`, `npm`, `pipx`, `cargo`, `mason`, `snap`
+- `manager`: required, for example `brew`, `apt`, `npm`, `pipx`, `cargo`, `snap`
 - `names`: required array of package names
 - `tap`: optional Homebrew tap to ensure before installing the listed packages
 - `cask`: optional boolean for Homebrew cask installs

@@ -48,18 +48,17 @@ compatibility layer during migration.
 
 ## Step 4: Implement package execution layer
 
-- [ ] Implement `dfl pkg brew install <pkg...>`.
-- [ ] Implement `dfl pkg apt install <pkg...>`.
-- [ ] Implement `dfl pkg npm install <pkg...>`.
-- [ ] Implement `dfl pkg pipx install <pkg...>`.
-- [ ] Implement `dfl pkg cargo install <pkg...>`.
-- [ ] Implement `dfl pkg mason install <pkg...>`.
-- [ ] Implement `dfl pkg snap install <pkg...>`.
-- [ ] Define per-manager “already installed” checks where practical; fall back to direct install
+- [x] Implement `dfl pkg brew install <pkg...>`.
+- [x] Implement `dfl pkg apt install <pkg...>`.
+- [x] Implement `dfl pkg npm install <pkg...>`.
+- [x] Implement `dfl pkg pipx install <pkg...>`.
+- [x] Implement `dfl pkg cargo install <pkg...>`.
+- [x] Implement `dfl pkg snap install <pkg...>`.
+- [x] Define per-manager “already installed” checks where practical; fall back to direct install
       when detection is messy.
-- [ ] Add Homebrew support for ensuring taps before package install when requested by the manifest
+- [x] Add Homebrew support for ensuring taps before package install when requested by the manifest
       layer.
-- [ ] Add tests around argument shaping and manifest-to-runtime translation where unit-testable.
+- [x] Add tests around argument shaping and manifest-to-runtime translation where unit-testable.
 
 ## Step 5: Implement manifest parsing
 

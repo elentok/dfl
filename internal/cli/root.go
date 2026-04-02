@@ -47,13 +47,3 @@ func (a *App) newSetupCommand() *cobra.Command {
 		},
 	}
 }
-
-func (a *App) newPkgCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "pkg",
-		Short: "Package manager commands",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return a.runPlaceholder("pkg", args)
-		},
-	}
-}

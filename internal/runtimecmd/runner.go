@@ -12,6 +12,7 @@ import (
 	"time"
 
 	runtimectx "dfl/internal/runtime"
+	"dfl/internal/ui"
 )
 
 type Runner struct {
@@ -38,18 +39,11 @@ func (o Runner) HasCommand(name string) (bool, error) {
 }
 
 func (o Runner) StepStart(message string) error {
-	_, err := fmt.Fprintf(o.stdout(), "==> %s\n", message)
-	return err
+	return ui.StepStart(o.stdout(), message)
 }
 
 func (o Runner) StepEnd(status runtimectx.ResultStatus, message string) error {
-	if message == "" {
-		_, err := fmt.Fprintf(o.stdout(), "[%s]\n", status)
-		return err
-	}
-
-	_, err := fmt.Fprintf(o.stdout(), "[%s] %s\n", status, message)
-	return err
+	return ui.StepEnd(o.stdout(), status, message)
 }
 
 func (o Runner) Shell(ctx runtimectx.Context, name string, command []string) (int, error) {
