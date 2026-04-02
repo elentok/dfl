@@ -49,7 +49,7 @@ type RepoDefaults struct {
 }
 
 type ComponentRef struct {
-	Name            string   `toml:"name"`
+	Names           []string `toml:"names"`
 	WhenOS          []string `toml:"when_os"`
 	WhenLinuxDistro []string `toml:"when_linux_distro"`
 	WhenFeatures    []string `toml:"when_features"`

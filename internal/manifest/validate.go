@@ -61,8 +61,13 @@ func ValidateSetup(m SetupManifest) error {
 		return fmt.Errorf("unsupported repo default transport %q", m.RepoDefaults.Transport)
 	}
 	for _, component := range m.Components {
-		if component.Name == "" {
-			return fmt.Errorf("setup component name is required")
+		if len(component.Names) == 0 {
+			return fmt.Errorf("setup component names are required")
+		}
+		for _, name := range component.Names {
+			if strings.TrimSpace(name) == "" {
+				return fmt.Errorf("setup component names must not be empty")
+			}
 		}
 		if err := validateConditionalLists(component.WhenOS, component.WhenLinuxDistro, component.WhenFeatures); err != nil {
 			return err

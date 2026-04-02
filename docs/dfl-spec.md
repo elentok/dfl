@@ -604,13 +604,10 @@ Suggested initial shape:
 transport = "inherit"
 
 [[components]]
-name = "fish"
+names = ["fish", "nvim"]
 
 [[components]]
-name = "nvim"
-
-[[components]]
-name = "osx-tuning"
+names = ["osx-tuning"]
 when_os = ["mac"]
 
 [[packages]]
@@ -639,7 +636,7 @@ single component, such as bootstrapping caches or creating top-level convenience
 
 `[[components]]` entries should support at least:
 
-- `name`: required
+- `names`: required array of component names
 - `when_os`: optional list of `mac`, `linux`, `wsl`
 - `when_linux_distro`: optional list such as `debian`, `ubuntu`
 - `when_features`: optional feature tags such as `gui` or `kde`

@@ -57,10 +57,10 @@ func TestParseSetupBytesParsesSetupSpecificSections(t *testing.T) {
 transport = "inherit"
 
 [[components]]
-name = "fish"
+names = ["fish"]
 
 [[components]]
-name = "osx-tuning"
+names = ["osx-tuning"]
 when_os = ["mac"]
 
 [[packages]]
@@ -86,7 +86,7 @@ run = "deno cache ./**/*.ts"
 	if m.RepoDefaults.Transport != "inherit" {
 		t.Fatalf("repo defaults not parsed: %#v", m.RepoDefaults)
 	}
-	if len(m.Components) != 2 || m.Components[1].Name != "osx-tuning" {
+	if len(m.Components) != 2 || len(m.Components[1].Names) != 1 || m.Components[1].Names[0] != "osx-tuning" {
 		t.Fatalf("components not parsed: %#v", m.Components)
 	}
 	if len(m.Repos) != 1 || m.Repos[0].GitHub != "elentok/notes" {
@@ -148,6 +148,7 @@ func TestConditionMatchingUsesOSDistroAndFeatures(t *testing.T) {
 		t.Fatal("PackageMatches returned false, want true")
 	}
 	if ComponentMatches(ComponentRef{
+		Names:        []string{"osx-tuning"},
 		WhenOS:       []string{"mac"},
 		WhenFeatures: []string{"gui"},
 	}, ctx) {
