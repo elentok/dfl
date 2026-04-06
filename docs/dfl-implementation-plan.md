@@ -90,16 +90,16 @@ compatibility layer during migration.
 
 ## Step 7: Implement repo synchronization
 
-- [ ] Define setup-manifest repo entries with `name`, `path`, and either `github` or `url`.
-- [ ] Define `[repo_defaults].transport` and per-repo `transport` overrides.
-- [ ] Implement transport inheritance from the dotfiles repo `origin` remote, with HTTPS fallback
+- [x] Define setup-manifest repo entries with `name`, `path`, and either `github` or `url`.
+- [x] Define `[repo_defaults].transport` and per-repo `transport` overrides.
+- [x] Implement transport inheritance from the dotfiles repo `origin` remote, with HTTPS fallback
       when the origin is not a clear GitHub SSH or HTTPS remote.
-- [ ] Implement GitHub URL expansion for `github = "owner/name"` using SSH or HTTPS transport.
-- [ ] Clone repos when the target path is missing.
-- [ ] Run `git pull --ff-only` when the target path already exists and is a Git checkout.
-- [ ] Detect and report diverged branches as a failed repo result with a clear explanation.
-- [ ] Add dry-run reporting for clone, pull, skip, and failure-precondition cases.
-- [ ] Add tests for transport resolution, HTTPS fallback, clone-vs-pull behavior, and divergence
+- [x] Implement GitHub URL expansion for `github = "owner/name"` using SSH or HTTPS transport.
+- [x] Clone repos when the target path is missing.
+- [x] Run `git pull --ff-only` when the target path already exists and is a Git checkout.
+- [x] Detect and report diverged branches as a failed repo result with a clear explanation.
+- [x] Add dry-run reporting for clone, pull, skip, and failure-precondition cases.
+- [x] Add tests for transport resolution, HTTPS fallback, clone-vs-pull behavior, and divergence
       handling.
 
 ## Step 8: Migrate current package and setup data

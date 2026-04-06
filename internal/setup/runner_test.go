@@ -172,7 +172,7 @@ func (f *fakeComponentInstaller) Install(_ runtimectx.Context, names []string) (
 type fakeRepoSyncer struct{}
 
 func (fakeRepoSyncer) Sync(runtimectx.Context, manifest.RepoDefaults, manifest.RepoSpec) (runtimectx.ResultStatus, string, error) {
-	return runtimectx.StatusSkipped, "repo sync not implemented yet", nil
+	return runtimectx.StatusSuccess, "done", nil
 }
 
 type trackingRepoSyncer struct{ called bool }

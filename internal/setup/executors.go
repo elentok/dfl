@@ -43,7 +43,7 @@ func (r Runner) repoSyncer() RepoSyncer {
 	if r.RepoSyncer != nil {
 		return r.RepoSyncer
 	}
-	return noopRepoSyncer{}
+	return repoSyncer{git: execGitRunner{}}
 }
 
 func (r Runner) stepExecutor() StepExecutor {
@@ -57,12 +57,6 @@ type componentInstallAdapter struct{}
 
 func (componentInstallAdapter) Install(runtimectx.Context, []string) (int, error) {
 	return 1, errors.New("component installer is not configured")
-}
-
-type noopRepoSyncer struct{}
-
-func (noopRepoSyncer) Sync(runtimectx.Context, manifest.RepoDefaults, manifest.RepoSpec) (runtimectx.ResultStatus, string, error) {
-	return runtimectx.StatusSkipped, "repo sync not implemented yet", nil
 }
 
 type shellStepExecutor struct {

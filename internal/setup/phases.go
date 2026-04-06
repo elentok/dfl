@@ -35,7 +35,7 @@ func (r Runner) runRepos(ctx runtimectx.Context, m manifest.SetupManifest, machi
 		if count == 0 {
 			return runtimectx.StatusSkipped, "no matching repos", nil
 		}
-		return runtimectx.StatusSkipped, "repo sync not implemented yet", nil
+		return runtimectx.StatusSuccess, fmt.Sprintf("processed %d repos", count), nil
 	})
 }
 
