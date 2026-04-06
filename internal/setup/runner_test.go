@@ -179,7 +179,7 @@ type trackingRepoSyncer struct{ called bool }
 
 func (t *trackingRepoSyncer) Sync(runtimectx.Context, manifest.RepoDefaults, manifest.RepoSpec) (runtimectx.ResultStatus, string, error) {
 	t.called = true
-	return runtimectx.StatusSkipped, "repo sync not implemented yet", nil
+	return runtimectx.StatusSuccess, "done", nil
 }
 
 type fakeStepExecutor struct{}
