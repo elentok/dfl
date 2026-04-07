@@ -39,9 +39,11 @@ func TestBootstrapInstallsDFLAndRunsSetup(t *testing.T) {
 		t.Fatalf("Remove fake dfl: %v", err)
 	}
 
-	downloader := "#!/bin/sh\ncase \"$*\" in\n  *" + assetName + "*) cat " + shellQuote(filepath.Join(releaseDir, assetName)) + " ;;\n  *) echo \"unexpected download args: $*\" >&2; exit 1 ;;\nesac\n"
-	writeExecutable(t, filepath.Join(binDir, "curl"), downloader)
-	writeExecutable(t, filepath.Join(binDir, "wget"), downloader)
+	archivePath := shellQuote(filepath.Join(releaseDir, assetName))
+	curl := "#!/bin/sh\ncase \"$*\" in\n  *" + assetName + "*) cp " + archivePath + " \"$4\" ;;\n  *) echo \"unexpected curl args: $*\" >&2; exit 1 ;;\nesac\n"
+	wget := "#!/bin/sh\ncase \"$*\" in\n  *" + assetName + "*) cp " + archivePath + " \"$2\" ;;\n  *) echo \"unexpected wget args: $*\" >&2; exit 1 ;;\nesac\n"
+	writeExecutable(t, filepath.Join(binDir, "curl"), curl)
+	writeExecutable(t, filepath.Join(binDir, "wget"), wget)
 
 	cmd := exec.Command("sh", "./bootstrap")
 	cmd.Env = append(os.Environ(),
