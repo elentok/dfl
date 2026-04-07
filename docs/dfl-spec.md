@@ -65,6 +65,16 @@ Responsibilities:
 This is the repo-wide orchestration entrypoint. It is intentionally separate from component
 manifests because some setup tasks belong to the repo as a whole rather than to a single component.
 
+Bootstrap should happen through a repo-root `bootstrap` shell script:
+
+- download the latest released `dfl` binary for the current OS/arch into a user-writable bin dir
+- add that bin dir to `PATH` for the current process
+- run `dfl setup`
+
+This bootstrap path should not require Homebrew. Homebrew can manage `dfl` later after bootstrap.
+The script should prefer `curl` for downloads, fall back to `wget`, and keep the shell code compact
+enough to audit during first-run setup.
+
 Suggested flags:
 
 - `--dry-run`
