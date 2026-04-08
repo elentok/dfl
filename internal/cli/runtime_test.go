@@ -85,3 +85,39 @@ func TestRunBackupDryRunPrintsDestination(t *testing.T) {
 		t.Fatalf("stdout = %q, want dry-run backup output", stdout.String())
 	}
 }
+
+func TestRunStepEndShortcutFlags(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "success", args: []string{"step-end", "--success", "done"}, want: "success: done"},
+		{name: "skip", args: []string{"step-end", "--skip", "dry-run"}, want: "skipped: dry-run"},
+		{name: "error", args: []string{"step-end", "--error", "failed"}, want: "failed: failed"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := NewApp()
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			app.SetStdout(&stdout)
+			app.SetStderr(&stderr)
+
+			code, err := app.Run(tt.args)
+			if err != nil {
+				t.Fatalf("Run returned error: %v", err)
+			}
+			if code != 0 {
+				t.Fatalf("Run returned code %d, want 0", code)
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr = %q, want empty", stderr.String())
+			}
+			if !strings.Contains(stdout.String(), tt.want) {
+				t.Fatalf("stdout = %q, want %q", stdout.String(), tt.want)
+			}
+		})
+	}
+}

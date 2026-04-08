@@ -110,7 +110,7 @@ func TestInstallSkipsWhenAllPackagesPresent(t *testing.T) {
 	if len(exec.Runs) != 0 {
 		t.Fatalf("run count = %d, want 0", len(exec.Runs))
 	}
-	if !strings.Contains(stdout.String(), "[skipped] already installed") {
+	if !strings.Contains(stdout.String(), "skipped: already installed") {
 		t.Fatalf("stdout = %q, want skipped output", stdout.String())
 	}
 }

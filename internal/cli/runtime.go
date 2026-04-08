@@ -6,6 +6,7 @@ import (
 
 	"dfl/internal/runtime"
 	"dfl/internal/runtimecmd"
+	"dfl/internal/ui"
 
 	"github.com/spf13/cobra"
 )
@@ -54,7 +55,6 @@ func (a *App) newStepEndCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&kind, "status", "", "Status: success, skip, or error")
-	_ = cmd.MarkFlagRequired("status")
 	_ = cmd.RegisterFlagCompletionFunc("status", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 		return []string{"success", "skip", "error"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -139,15 +139,12 @@ func (a *App) newBackupCommand() *cobra.Command {
 				return err
 			}
 			if backupPath == "" {
-				fmt.Fprintln(a.stdoutWriter(), "[skipped] path does not exist")
-				return nil
+				return ui.StepEnd(a.stdoutWriter(), runtime.StatusSkipped, "path does not exist")
 			}
 			if ctx.DryRun {
-				fmt.Fprintf(a.stdoutWriter(), "[success] would move to %s\n", backupPath)
-				return nil
+				return ui.StepEnd(a.stdoutWriter(), runtime.StatusSuccess, fmt.Sprintf("would move to %s", backupPath))
 			}
-			fmt.Fprintf(a.stdoutWriter(), "[success] moved to %s\n", backupPath)
-			return nil
+			return ui.StepEnd(a.stdoutWriter(), runtime.StatusSuccess, fmt.Sprintf("moved to %s", backupPath))
 		},
 	}
 }
@@ -166,8 +163,7 @@ func (a *App) newFilesystemCommand(name, argUse string, args cobra.PositionalArg
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(a.stdoutWriter(), "[%s] %s\n", status, message)
-			return nil
+			return ui.StepEnd(a.stdoutWriter(), status, message)
 		},
 	}
 }
