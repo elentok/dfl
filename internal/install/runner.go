@@ -9,6 +9,7 @@ import (
 
 	"dfl/internal/components"
 	runtimectx "dfl/internal/runtime"
+	"dfl/internal/ui"
 )
 
 var ErrManifestInstallNotImplemented = errors.New("manifest install is not implemented yet")
@@ -42,7 +43,9 @@ func (r Runner) Install(ctx runtimectx.Context, names []string) (int, error) {
 			return 1, err
 		}
 
-		fmt.Fprintf(stdout, "Installing %s (%s/%s)\n", component.Name, component.Kind, component.InstallerType)
+		if err := ui.SectionHeader(stdout, fmt.Sprintf("Installing %s (%s/%s)", component.Name, component.Kind, component.InstallerType)); err != nil {
+			return 1, err
+		}
 
 		if err := r.installComponent(ctx, component); err != nil {
 			fmt.Fprintf(stderr, "component %q failed: %v\n", component.Name, err)

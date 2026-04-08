@@ -52,6 +52,58 @@ func TestResolveFallsBackToExtraScript(t *testing.T) {
 	}
 }
 
+func TestResolveSupportsCoreBareExecutableFile(t *testing.T) {
+	repoRoot := t.TempDir()
+	entrypoint := filepath.Join(repoRoot, "core", "python")
+	if err := os.MkdirAll(filepath.Dir(entrypoint), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	writeFile(t, entrypoint, "#!/usr/bin/env bash\n")
+
+	component, err := Resolve(repoRoot, "python")
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if component.Kind != KindCore {
+		t.Fatalf("Kind = %q, want %q", component.Kind, KindCore)
+	}
+	if component.InstallerType != InstallerScript {
+		t.Fatalf("InstallerType = %q, want %q", component.InstallerType, InstallerScript)
+	}
+	if component.Entrypoint != entrypoint {
+		t.Fatalf("Entrypoint = %q, want %q", component.Entrypoint, entrypoint)
+	}
+	if component.Root != filepath.Join(repoRoot, "core") {
+		t.Fatalf("Root = %q, want %q", component.Root, filepath.Join(repoRoot, "core"))
+	}
+}
+
+func TestResolveSupportsExtraBareExecutableFile(t *testing.T) {
+	repoRoot := t.TempDir()
+	entrypoint := filepath.Join(repoRoot, "extra", "bun")
+	if err := os.MkdirAll(filepath.Dir(entrypoint), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	writeFile(t, entrypoint, "#!/usr/bin/env bash\n")
+
+	component, err := Resolve(repoRoot, "bun")
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if component.Kind != KindExtra {
+		t.Fatalf("Kind = %q, want %q", component.Kind, KindExtra)
+	}
+	if component.InstallerType != InstallerScript {
+		t.Fatalf("InstallerType = %q, want %q", component.InstallerType, InstallerScript)
+	}
+	if component.Entrypoint != entrypoint {
+		t.Fatalf("Entrypoint = %q, want %q", component.Entrypoint, entrypoint)
+	}
+	if component.Root != filepath.Join(repoRoot, "extra") {
+		t.Fatalf("Root = %q, want %q", component.Root, filepath.Join(repoRoot, "extra"))
+	}
+}
+
 func TestResolveMissingComponentReturnsError(t *testing.T) {
 	_, err := Resolve(t.TempDir(), "missing")
 	if !errors.Is(err, ErrComponentNotFound) {

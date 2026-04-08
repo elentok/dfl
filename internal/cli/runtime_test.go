@@ -92,9 +92,9 @@ func TestRunStepEndShortcutFlags(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "success", args: []string{"step-end", "--success", "done"}, want: "success: done"},
-		{name: "skip", args: []string{"step-end", "--skip", "dry-run"}, want: "skipped: dry-run"},
-		{name: "error", args: []string{"step-end", "--error", "failed"}, want: "failed: failed"},
+		{name: "success", args: []string{"step-end", "--success", "done"}, want: "✓ done"},
+		{name: "skip", args: []string{"step-end", "--skip", "dry-run"}, want: "• dry-run"},
+		{name: "error", args: []string{"step-end", "--error", "failed"}, want: "✗ failed"},
 	}
 
 	for _, tt := range tests {

@@ -36,6 +36,9 @@ func TestRunInstallAliasExecutesComponentInstall(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q, want empty", stderr.String())
 	}
+	if !strings.Contains(stdout.String(), `Installing fish (core/script)`) {
+		t.Fatalf("stdout = %q, want install header", stdout.String())
+	}
 	if !strings.Contains(stdout.String(), `component "fish": success`) {
 		t.Fatalf("stdout = %q, want success summary", stdout.String())
 	}

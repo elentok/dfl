@@ -40,7 +40,7 @@ func TestShellDryRunSkipsExecution(t *testing.T) {
 	if !strings.Contains(output, "DRY-RUN: echo hi") {
 		t.Fatalf("stdout = %q, want dry-run command", output)
 	}
-	if !strings.Contains(output, "skipped: dry-run") {
+	if !strings.Contains(output, "• dry-run") {
 		t.Fatalf("stdout = %q, want skipped step end", output)
 	}
 }

@@ -56,6 +56,8 @@ type candidate struct {
 func candidates(repoRoot, name string) []candidate {
 	coreRoot := filepath.Join(repoRoot, "core", name)
 	extraRoot := filepath.Join(repoRoot, "extra", name)
+	coreFile := filepath.Join(repoRoot, "core", name)
+	extraFile := filepath.Join(repoRoot, "extra", name)
 
 	return []candidate{
 		{
@@ -71,6 +73,12 @@ func candidates(repoRoot, name string) []candidate {
 			EntryPoint:    filepath.Join(coreRoot, "install"),
 		},
 		{
+			Kind:          KindCore,
+			Root:          filepath.Dir(coreFile),
+			InstallerType: InstallerScript,
+			EntryPoint:    coreFile,
+		},
+		{
 			Kind:          KindExtra,
 			Root:          extraRoot,
 			InstallerType: InstallerManifest,
@@ -81,6 +89,12 @@ func candidates(repoRoot, name string) []candidate {
 			Root:          extraRoot,
 			InstallerType: InstallerScript,
 			EntryPoint:    filepath.Join(extraRoot, "install"),
+		},
+		{
+			Kind:          KindExtra,
+			Root:          filepath.Dir(extraFile),
+			InstallerType: InstallerScript,
+			EntryPoint:    extraFile,
 		},
 	}
 }
