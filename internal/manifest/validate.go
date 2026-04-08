@@ -5,15 +5,6 @@ import (
 	"strings"
 )
 
-var supportedPackageManagers = map[string]bool{
-	"brew":  true,
-	"apt":   true,
-	"npm":   true,
-	"pipx":  true,
-	"cargo": true,
-	"snap":  true,
-}
-
 var supportedOS = map[string]bool{
 	"mac":   true,
 	"linux": true,
@@ -40,8 +31,8 @@ func ValidateInstall(m InstallManifest) error {
 	if err := validateWhen(m.When); err != nil {
 		return err
 	}
-	for _, pkg := range m.Packages {
-		if err := validatePackage(pkg); err != nil {
+	for _, group := range m.Packages.Entries() {
+		if err := validatePackage(group.Manager, group.Spec); err != nil {
 			return err
 		}
 	}
@@ -73,8 +64,8 @@ func ValidateSetup(m SetupManifest) error {
 			return err
 		}
 	}
-	for _, pkg := range m.Packages {
-		if err := validatePackage(pkg); err != nil {
+	for _, group := range m.Packages.Entries() {
+		if err := validatePackage(group.Manager, group.Spec); err != nil {
 			return err
 		}
 	}
@@ -91,22 +82,19 @@ func ValidateSetup(m SetupManifest) error {
 	return nil
 }
 
-func validatePackage(pkg PackageSpec) error {
-	if !supportedPackageManagers[pkg.Manager] {
-		return fmt.Errorf("unsupported package manager %q", pkg.Manager)
-	}
+func validatePackage(manager string, pkg PackageSpec) error {
 	if len(pkg.Names) == 0 {
-		return fmt.Errorf("package names are required for manager %q", pkg.Manager)
+		return fmt.Errorf("package names are required for manager %q", manager)
 	}
 	for _, name := range pkg.Names {
 		if strings.TrimSpace(name) == "" {
 			return fmt.Errorf("package names must not be empty")
 		}
 	}
-	if pkg.Tap != "" && pkg.Manager != "brew" {
+	if pkg.Tap != "" && manager != "brew" {
 		return fmt.Errorf("tap is only supported for brew packages")
 	}
-	if pkg.Cask && pkg.Manager != "brew" {
+	if pkg.Cask && manager != "brew" {
 		return fmt.Errorf("cask is only supported for brew packages")
 	}
 	return validateConditionalLists(pkg.WhenOS, pkg.WhenLinuxDistro, pkg.WhenFeatures)

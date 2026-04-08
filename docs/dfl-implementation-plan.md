@@ -63,9 +63,9 @@ compatibility layer during migration.
 ## Step 5: Implement manifest parsing
 
 - [x] Define Go structs for `install.toml` and `setup/default.toml`.
-- [x] Parse `[when]`, `[symlinks]`, `[copies]`, `mkdirs`, `[[packages]]`, and `[[steps]]`.
-- [x] Support `[[packages]]` fields:
-      `manager`, `names`, optional `tap`, optional `cask`, `when_os`,
+- [x] Parse `[when]`, `[symlinks]`, `[copies]`, `mkdirs`, `[[packages.<manager>]]`, and `[[steps]]`.
+- [x] Support `[[packages.<manager>]]` fields:
+      `names`, optional `tap`, optional `cask`, `when_os`,
       `when_linux_distro`, and `when_features`.
 - [x] Support `[[steps]]` fields:
       `name`, `os`, `if`, `if_not`, `cwd`, `sudo`, and `run`.
@@ -76,7 +76,7 @@ compatibility layer during migration.
 ## Step 6: Implement `setup/default.toml` execution
 
 - [x] Define setup-manifest support for:
-      `[repo_defaults]`, `[[components]]`, `[when]`, `[[packages]]`, `[[repos]]`, and `[[steps]]`.
+      `[repo_defaults]`, `[[components]]`, `[when]`, `[[packages.<manager>]]`, `[[repos]]`, and `[[steps]]`.
 - [x] Implement `dfl setup` to load `setup/default.toml`.
 - [x] Execute setup manifests in a clear order:
       validate setup `[when]`, sync setup repos, install setup packages, run setup
@@ -104,18 +104,18 @@ compatibility layer during migration.
 
 ## Step 8: Migrate current package and setup data
 
-- [ ] Convert `/Users/david/.dotfiles/config/packages.cfg` into `setup/default.toml`
-      `[[packages]]` entries.
-- [ ] Normalize manager/platform variants from the old file into conditional TOML entries.
-- [ ] Represent `dff` as a Homebrew package entry with its required tap.
-- [ ] Move repo definitions out of `dotf-repos` and into `setup/default.toml` `[[repos]]`
+- [x] Convert `/Users/david/.dotfiles/config/packages.cfg` into `setup/default.toml`
+      `[[packages.<manager>]]` entries.
+- [x] Normalize manager/platform variants from the old file into conditional TOML entries.
+- [x] Represent `dff` as a Homebrew package entry with its required tap.
+- [x] Move repo definitions out of `dotf-repos` and into `setup/default.toml` `[[repos]]`
       entries.
-- [ ] Use inherited transport by default and explicit per-repo overrides only where needed.
-- [ ] Move repo-level actions such as Deno caching into `setup/default.toml` `[[steps]]`.
-- [ ] Represent macOS-only setup actions in the setup manifest using conditions.
-- [ ] Keep `osx-tuning` as a component referenced by a conditional setup-manifest component entry,
+- [x] Use inherited transport by default and explicit per-repo overrides only where needed.
+- [x] Move repo-level actions such as Deno caching into `setup/default.toml` `[[steps]]`.
+- [x] Represent macOS-only setup actions in the setup manifest using conditions.
+- [x] Keep `osx-tuning` as a component referenced by a conditional setup-manifest component entry,
       not as a special-case built-in action.
-- [ ] Review the resulting manifest for readability before wiring it into the default flow.
+- [x] Review the resulting manifest for readability before wiring it into the default flow.
 
 ## Step 9: Add compatibility layer in `framework.sh`
 

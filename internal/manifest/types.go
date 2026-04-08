@@ -7,7 +7,7 @@ type InstallManifest struct {
 	Symlinks map[string]string `toml:"symlinks"`
 	Copies   map[string]string `toml:"copies"`
 	Mkdirs   []string          `toml:"mkdirs"`
-	Packages []PackageSpec     `toml:"packages"`
+	Packages PackageGroups     `toml:"packages"`
 	Steps    []StepSpec        `toml:"steps"`
 }
 
@@ -15,7 +15,7 @@ type SetupManifest struct {
 	When         When           `toml:"when"`
 	RepoDefaults RepoDefaults   `toml:"repo_defaults"`
 	Components   []ComponentRef `toml:"components"`
-	Packages     []PackageSpec  `toml:"packages"`
+	Packages     PackageGroups  `toml:"packages"`
 	Repos        []RepoSpec     `toml:"repos"`
 	Steps        []StepSpec     `toml:"steps"`
 }
@@ -24,8 +24,16 @@ type When struct {
 	OS []string `toml:"os"`
 }
 
+type PackageGroups struct {
+	Brew  []PackageSpec `toml:"brew"`
+	Apt   []PackageSpec `toml:"apt"`
+	NPM   []PackageSpec `toml:"npm"`
+	Pipx  []PackageSpec `toml:"pipx"`
+	Cargo []PackageSpec `toml:"cargo"`
+	Snap  []PackageSpec `toml:"snap"`
+}
+
 type PackageSpec struct {
-	Manager         string   `toml:"manager"`
 	Names           []string `toml:"names"`
 	Tap             string   `toml:"tap"`
 	Cask            bool     `toml:"cask"`

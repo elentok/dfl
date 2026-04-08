@@ -49,12 +49,13 @@ func (r Runner) runPackages(ctx runtimectx.Context, m manifest.SetupManifest, ma
 	pkgRunner := r.packageInstaller()
 	return ui.Step(r.stdout(), "Installing setup packages", func() (runtimectx.ResultStatus, string, error) {
 		count := 0
-		for _, pkg := range m.Packages {
+		for _, group := range m.Packages.Entries() {
+			pkg := group.Spec
 			if !manifest.PackageMatches(pkg, machine) {
 				continue
 			}
 			count++
-			code, err := pkgRunner.Install(ctx, pkg.Manager, packagemgr.InstallOptions{
+			code, err := pkgRunner.Install(ctx, group.Manager, packagemgr.InstallOptions{
 				Packages: pkg.Names,
 				Tap:      pkg.Tap,
 				Cask:     pkg.Cask,
@@ -63,7 +64,7 @@ func (r Runner) runPackages(ctx runtimectx.Context, m manifest.SetupManifest, ma
 				return "", "", err
 			}
 			if code != 0 {
-				return runtimectx.StatusFailed, fmt.Sprintf("package install for %s failed", pkg.Manager), nil
+				return runtimectx.StatusFailed, fmt.Sprintf("package install for %s failed", group.Manager), nil
 			}
 		}
 		if count == 0 {

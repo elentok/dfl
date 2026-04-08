@@ -47,8 +47,7 @@ func TestRunSupportsSkipPackagesAndSkipRepos(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	setupFile := `
-[[packages]]
-manager = "brew"
+[[packages.brew]]
 names = ["gx"]
 
 [[repos]]

@@ -508,29 +508,28 @@ mkdirs = [
 
 ### Packages
 
-#### `[[packages]]`
+#### `[[packages.<manager>]]`
 
 Ordered package groups with optional conditions.
 
 Example:
 
 ```toml
-[[packages]]
-manager = "brew"
+[[packages.brew]]
 names = ["tmux", "reattach-to-user-namespace"]
 
-[[packages]]
-manager = "apt"
+[[packages.apt]]
 names = ["tmux"]
 
-[[packages]]
-manager = "cargo"
+[[packages.cargo]]
 names = ["eza"]
 ```
 
 Supported fields:
 
-- `manager`: required, for example `brew`, `apt`, `npm`, `pipx`, `cargo`, `snap`
+- package manager is declared by the table name, for example `[[packages.brew]]`,
+  `[[packages.apt]]`, `[[packages.npm]]`, `[[packages.pipx]]`, `[[packages.cargo]]`, or
+  `[[packages.snap]]`
 - `names`: required array of package names
 - `tap`: optional Homebrew tap to ensure before installing the listed packages
 - `cask`: optional boolean for Homebrew cask installs
@@ -602,7 +601,7 @@ for a single component.
 It should support:
 
 - top-level setup constraints via `[when]`
-- `[[packages]]` using the same schema as component manifests
+- `[[packages.<manager>]]` using the same schema as component manifests
 - `[[repos]]` for cloning and updating required repositories
 - `[[steps]]` using the same schema as component manifests
 - `[[components]]` entries for component selection and conditional inclusion
@@ -620,8 +619,7 @@ names = ["fish", "nvim"]
 names = ["osx-tuning"]
 when_os = ["mac"]
 
-[[packages]]
-manager = "brew"
+[[packages.brew]]
 names = ["dff"]
 tap = "elentok/stuff"
 
@@ -841,7 +839,7 @@ The shell installer should still use `dfl symlink` and `dfl shell` where it impr
   per-repo overrides for `ssh` or `https`
 - package definitions should move out of `packages.cfg` into TOML now, but remain repo-level before
   later migration into component `install.toml` files
-- package groups should use `[[packages]]` entries with `names = [...]` and optional conditions
+- package groups should use `[[packages.<manager>]]` entries with `names = [...]` and optional conditions
 - setup-level `[[steps]]` should use the same model as component-manifest `[[steps]]`
 - milestone 1 should keep `framework.sh` as a compatibility layer and migrate installers
   incrementally rather than rewriting every install script up front

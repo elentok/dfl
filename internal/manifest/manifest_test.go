@@ -20,8 +20,7 @@ os = ["mac", "linux"]
 [copies]
 "a.txt" = "~/.a.txt"
 
-[[packages]]
-manager = "brew"
+[[packages.brew]]
 names = ["tmux"]
 tap = "elentok/stuff"
 
@@ -43,7 +42,7 @@ run = "./restore"
 	if m.Symlinks["tmux.conf"] != "~/.tmux.conf" {
 		t.Fatalf("symlink not parsed: %#v", m.Symlinks)
 	}
-	if len(m.Packages) != 1 || m.Packages[0].Manager != "brew" {
+	if len(m.Packages.Brew) != 1 || m.Packages.Brew[0].Names[0] != "tmux" {
 		t.Fatalf("packages not parsed: %#v", m.Packages)
 	}
 	if len(m.Steps) != 1 || m.Steps[0].Name != "restore" {
@@ -63,8 +62,7 @@ names = ["fish"]
 names = ["osx-tuning"]
 when_os = ["mac"]
 
-[[packages]]
-manager = "brew"
+[[packages.brew]]
 names = ["dff"]
 tap = "elentok/stuff"
 
@@ -106,12 +104,11 @@ unknown = "x"
 
 func TestValidateInstallRejectsUnsupportedPackageManager(t *testing.T) {
 	_, err := ParseInstallBytes([]byte(`
-[[packages]]
-manager = "mason"
+[[packages.mason]]
 names = ["stylua"]
 `))
-	if err == nil || !strings.Contains(err.Error(), `unsupported package manager "mason"`) {
-		t.Fatalf("err = %v, want unsupported manager error", err)
+	if err == nil || !strings.Contains(err.Error(), `unknown manifest fields`) {
+		t.Fatalf("err = %v, want unknown package manager field error", err)
 	}
 }
 
