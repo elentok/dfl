@@ -1,11 +1,11 @@
 package manifest
 
 import (
+	"bytes"
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/BurntSushi/toml"
+	"go.yaml.in/yaml/v4"
 )
 
 func ParseInstallFile(path string) (InstallManifest, error) {
@@ -47,16 +47,10 @@ func ParseSetupBytes(data []byte) (SetupManifest, error) {
 }
 
 func decodeStrict(data []byte, target any) error {
-	md, err := toml.Decode(string(data), target)
-	if err != nil {
-		return err
-	}
-	if undecoded := md.Undecoded(); len(undecoded) > 0 {
-		parts := make([]string, 0, len(undecoded))
-		for _, item := range undecoded {
-			parts = append(parts, item.String())
-		}
-		return fmt.Errorf("unknown manifest fields: %s", strings.Join(parts, ", "))
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(target); err != nil {
+		return fmt.Errorf("decode manifest: %w", err)
 	}
 	return nil
 }

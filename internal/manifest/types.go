@@ -1,77 +1,77 @@
 package manifest
 
 type InstallManifest struct {
-	Name     string            `toml:"name"`
-	Kind     string            `toml:"kind"`
-	When     When              `toml:"when"`
-	Symlinks map[string]string `toml:"symlinks"`
-	Copies   map[string]string `toml:"copies"`
-	Mkdirs   []string          `toml:"mkdirs"`
-	Packages PackageGroups     `toml:"packages"`
-	Steps    []StepSpec        `toml:"steps"`
+	Name     string            `yaml:"name"`
+	Kind     string            `yaml:"kind"`
+	When     When              `yaml:"when"`
+	Symlinks map[string]string `yaml:"symlinks"`
+	Copies   map[string]string `yaml:"copies"`
+	Mkdirs   []string          `yaml:"mkdirs"`
+	Packages PackageGroups     `yaml:"packages"`
+	Steps    []StepSpec        `yaml:"steps"`
 }
 
 type SetupManifest struct {
-	When         When           `toml:"when"`
-	RepoDefaults RepoDefaults   `toml:"repo_defaults"`
-	Components   []ComponentRef `toml:"components"`
-	Packages     PackageGroups  `toml:"packages"`
-	Repos        []RepoSpec     `toml:"repos"`
-	Steps        []StepSpec     `toml:"steps"`
+	When         When           `yaml:"when"`
+	RepoDefaults RepoDefaults   `yaml:"repo_defaults"`
+	Components   []ComponentRef `yaml:"components"`
+	Packages     PackageGroups  `yaml:"packages"`
+	Repos        []RepoSpec     `yaml:"repos"`
+	Steps        []StepSpec     `yaml:"steps"`
 }
 
 type When struct {
-	OS []string `toml:"os"`
+	OS []string `yaml:"os"`
 }
 
 type PackageGroups struct {
-	Brew  []PackageSpec `toml:"brew"`
-	Apt   []PackageSpec `toml:"apt"`
-	NPM   []PackageSpec `toml:"npm"`
-	Pipx  []PackageSpec `toml:"pipx"`
-	Cargo []PackageSpec `toml:"cargo"`
-	Snap  []PackageSpec `toml:"snap"`
+	Brew  []PackageSpec `yaml:"brew"`
+	Apt   []PackageSpec `yaml:"apt"`
+	NPM   []PackageSpec `yaml:"npm"`
+	Pipx  []PackageSpec `yaml:"pipx"`
+	Cargo []PackageSpec `yaml:"cargo"`
+	Snap  []PackageSpec `yaml:"snap"`
 }
 
 type PackageSpec struct {
-	Names           []string `toml:"names"`
-	Tap             string   `toml:"tap"`
-	Cask            bool     `toml:"cask"`
-	WhenOS          []string `toml:"when_os"`
-	WhenLinuxDistro []string `toml:"when_linux_distro"`
-	WhenFeatures    []string `toml:"when_features"`
+	Names           []string `yaml:"names"`
+	Tap             string   `yaml:"tap"`
+	Cask            bool     `yaml:"cask"`
+	WhenOS          []string `yaml:"when_os"`
+	WhenLinuxDistro []string `yaml:"when_linux_distro"`
+	WhenFeatures    []string `yaml:"when_features"`
 }
 
 type StepSpec struct {
-	Name  string   `toml:"name"`
-	OS    []string `toml:"os"`
-	If    string   `toml:"if"`
-	IfNot string   `toml:"if_not"`
-	CWD   string   `toml:"cwd"`
-	Sudo  bool     `toml:"sudo"`
-	Run   string   `toml:"run"`
+	Name  string   `yaml:"name"`
+	OS    []string `yaml:"os"`
+	If    string   `yaml:"if"`
+	IfNot string   `yaml:"if_not"`
+	CWD   string   `yaml:"cwd"`
+	Sudo  bool     `yaml:"sudo"`
+	Run   string   `yaml:"run"`
 }
 
 type RepoDefaults struct {
-	Transport string `toml:"transport"`
+	Transport string `yaml:"transport"`
 }
 
 type ComponentRef struct {
-	Names           []string `toml:"names"`
-	WhenOS          []string `toml:"when_os"`
-	WhenLinuxDistro []string `toml:"when_linux_distro"`
-	WhenFeatures    []string `toml:"when_features"`
+	Names           []string `yaml:"names"`
+	WhenOS          []string `yaml:"when_os"`
+	WhenLinuxDistro []string `yaml:"when_linux_distro"`
+	WhenFeatures    []string `yaml:"when_features"`
 }
 
 type RepoSpec struct {
-	Name            string   `toml:"name"`
-	Path            string   `toml:"path"`
-	GitHub          string   `toml:"github"`
-	URL             string   `toml:"url"`
-	Transport       string   `toml:"transport"`
-	WhenOS          []string `toml:"when_os"`
-	WhenLinuxDistro []string `toml:"when_linux_distro"`
-	WhenFeatures    []string `toml:"when_features"`
+	Name            string   `yaml:"name"`
+	Path            string   `yaml:"path"`
+	GitHub          string   `yaml:"github"`
+	URL             string   `yaml:"url"`
+	Transport       string   `yaml:"transport"`
+	WhenOS          []string `yaml:"when_os"`
+	WhenLinuxDistro []string `yaml:"when_linux_distro"`
+	WhenFeatures    []string `yaml:"when_features"`
 }
 
 type MachineContext struct {

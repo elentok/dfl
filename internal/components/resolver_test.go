@@ -14,7 +14,7 @@ func TestResolvePrefersCoreManifestOverScript(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	writeFile(t, filepath.Join(componentRoot, "install"), "#!/usr/bin/env bash\n")
-	writeFile(t, filepath.Join(componentRoot, "install.toml"), "name = \"tmux\"\n")
+	writeFile(t, filepath.Join(componentRoot, "install.yaml"), "name: tmux\n")
 
 	component, err := Resolve(repoRoot, "tmux")
 	if err != nil {

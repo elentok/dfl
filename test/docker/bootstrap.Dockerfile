@@ -7,6 +7,6 @@ WORKDIR /repo
 COPY bootstrap ./bootstrap
 
 RUN mkdir -p .git setup \
-  && touch setup/default.toml
+  && touch setup/default.yaml setup/default.toml
 
 RUN HOME=/tmp/dfl-home DFL_ROOT=/repo PATH="/bin:/usr/bin" ./bootstrap

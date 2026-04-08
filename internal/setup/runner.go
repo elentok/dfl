@@ -25,7 +25,7 @@ type Runner struct {
 }
 
 func (r Runner) Run(ctx runtimectx.Context, opts Options) (int, error) {
-	setupPath := filepath.Join(ctx.RepoRoot, "setup", "default.toml")
+	setupPath := filepath.Join(ctx.RepoRoot, "setup", "default.yaml")
 	setupManifest, err := manifest.ParseSetupFile(setupPath)
 	if err != nil {
 		return 1, err

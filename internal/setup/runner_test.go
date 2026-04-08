@@ -18,10 +18,10 @@ func TestRunLoadsSetupManifestAndFiltersComponents(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	setupFile := `
-[[components]]
-names = ["fish", "nvim"]
+components:
+  - names: [fish, nvim]
 `
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.toml"), []byte(setupFile), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.yaml"), []byte(setupFile), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
@@ -47,15 +47,16 @@ func TestRunSupportsSkipPackagesAndSkipRepos(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	setupFile := `
-[[packages.brew]]
-names = ["gx"]
+packages:
+  brew:
+    - names: [gx]
 
-[[repos]]
-name = "notes"
-github = "elentok/notes"
-path = "~/notes"
+repos:
+  - name: notes
+    github: elentok/notes
+    path: ~/notes
 `
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.toml"), []byte(setupFile), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.yaml"), []byte(setupFile), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
@@ -88,10 +89,10 @@ func TestRunEvaluatesSetupWhenCondition(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	setupFile := `
-[when]
-os = ["linux"]
+when:
+  os: [linux]
 `
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.toml"), []byte(setupFile), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.yaml"), []byte(setupFile), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
@@ -116,16 +117,15 @@ func TestRunExecutesMatchingSetupStepsWithDryRun(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	setupFile := `
-[[steps]]
-name = "cache"
-run = "echo hello"
+steps:
+  - name: cache
+    run: echo hello
 
-[[steps]]
-name = "mac only"
-os = ["mac"]
-run = "echo mac"
+  - name: mac only
+    os: [mac]
+    run: echo mac
 `
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.toml"), []byte(setupFile), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.yaml"), []byte(setupFile), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 

@@ -28,7 +28,7 @@ func filterComponents(components []manifest.ComponentRef, machine manifest.Machi
 
 	for name := range requestedSet {
 		if !declaredSet[name] {
-			return nil, fmt.Errorf("component %q is not declared in setup/default.toml", name)
+			return nil, fmt.Errorf("component %q is not declared in setup/default.yaml", name)
 		}
 	}
 

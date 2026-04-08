@@ -3,8 +3,8 @@ module dfl
 go 1.26.0
 
 require (
-	github.com/BurntSushi/toml v1.4.0
 	github.com/spf13/cobra v1.9.1
+	go.yaml.in/yaml/v4 v4.0.0-rc.4
 )
 
 require (

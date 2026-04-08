@@ -6,7 +6,7 @@ import (
 )
 
 func TestDefaultSetupManifestParses(t *testing.T) {
-	path := filepath.Join("..", "..", "setup", "default.toml")
+	path := filepath.Join("..", "..", "setup", "default.yaml")
 	if _, err := ParseSetupFile(path); err != nil {
 		t.Fatalf("ParseSetupFile(%s): %v", path, err)
 	}

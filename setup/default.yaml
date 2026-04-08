@@ -1,0 +1,224 @@
+repo_defaults:
+  transport: inherit
+
+# Repositories previously listed in /Users/david/.dotfiles/config/repos.cfg.
+repos:
+  - name: rename
+    github: elentok/rename
+    path: ~/dev/rename
+
+  - name: git-helpers
+    github: elentok/git-helpers
+    path: ~/dev/git-helpers
+
+  - name: qmkmd
+    github: elentok/qmkmd
+    path: ~/dev/qmkmd
+
+  - name: stuff.nvim
+    github: elentok/stuff.nvim
+    path: ~/dev/nvim/stuff.nvim
+
+  - name: catppuccin-tmux
+    github: catppuccin/tmux
+    path: ~/.tmux/plugins/catppuccin/tmux
+    transport: https
+
+packages:
+  # Bootstrap/runtime packages.
+  brew:
+    - names: [dff]
+      tap: elentok/stuff
+      cask: true
+      when_os: [mac]
+
+    # Base Homebrew packages, shared by macOS and Linux Homebrew installs.
+    - names:
+        - bat
+        - bottom
+        - coreutils
+        - curl
+        - fzf
+        - git-delta
+        - eza
+        - git
+        - glow
+        - gron
+        - htop
+        - ncdu
+        - ripgrep
+        - tig
+        - tmux
+        - wget
+        - gh
+        - jless
+        - deno
+        - fnm
+        - pfetch-rs
+        - poetry
+        - ruff
+        - chafa
+        - direnv
+        - television
+        - yazi
+        - poppler
+        - resvg
+        - pv
+        - countdown
+        - tabiew
+        - gum
+        - lazygit
+        - neovim
+        - fd
+        - pandoc
+        - toilet
+        - tree-sitter
+        - tree-sitter-cli
+        - go
+        - pipx
+
+    - names: [colr, gx, blf]
+      tap: elentok/stuff
+
+    # macOS-only Homebrew packages.
+    - names:
+        - findutils
+        - gnu-sed
+        - grep
+        - terminal-notifier
+        - fish
+        - bash
+      when_os: [mac]
+
+    # macOS-only Homebrew casks.
+    - names:
+        - keepassxc
+        - freecad
+        - openscad@snapshot
+        - obsidian
+        - telegram
+        - spotify
+        - chatgpt
+        - prusaslicer
+      cask: true
+      when_os: [mac]
+
+    # Extra Homebrew packages previously under brew-extra; not part of default setup.
+    - names: [imagemagick, python@3.10]
+      when_features: [extra]
+
+  # Base apt packages.
+  apt:
+    - names:
+        - build-essential
+        - cmake
+        - libreadline-dev
+        - cifs-utils
+        - curl
+        - git
+        - htop
+        - imagemagick
+        - ncdu
+        - plantuml
+        - unzip
+        - wget
+        - qalc
+        - ffmpeg
+        - pv
+        - fish
+        - fd-find
+        - exuberant-ctags
+        - xclip
+        - toilet
+      when_os: [linux, wsl]
+
+    # Debian-specific apt packages.
+    - names: [libncurses5-dev]
+      when_os: [linux, wsl]
+      when_linux_distro: [debian]
+
+    # GUI apt packages; this preserves the old non-default apt-gui group.
+    - names:
+        - feh
+        - gimp
+        - playerctl
+        - vlc
+        - keepassxc
+        - gnome-sushi
+        - gnome-mahjongg
+        - gnome-sudoku
+        - fonts-agave
+      when_os: [linux, wsl]
+      when_features: [gui]
+
+    # KDE apt packages; enabled by the future kde feature flag.
+    - names:
+        - sddm-theme-debian-breeze
+        - kde-plasma-desktop
+        - plasma-nm
+        - plasma-pa
+        - powerdevil
+        - gwenview
+        - ark
+        - libreoffice-kde5
+        - yakuake
+        - kde-spectacle
+        - xserver-xorg-input-synaptics
+      when_os: [linux, wsl]
+      when_features: [kde]
+
+  # Linux-only packages from other managers.
+  snap:
+    - names: [wl-clip]
+      when_os: [linux, wsl]
+      when_features: [wayland]
+
+  # Language/tool ecosystem packages.
+  pipx:
+    - names:
+        - httpie
+        - ipython
+        - visidata
+        - pulsemixer
+        - git-fame
+        - neovim-remote
+
+  cargo:
+    - names: [cargo-watch]
+      when_features: [rust]
+
+# Components previously installed by dotf-setup.
+components:
+  - names:
+      - fish
+      - nvim
+      - git
+      - ripgrep
+      - tig
+      - bat
+      - bash
+      - tmux
+      - yazi
+      - nodejs
+      - python
+
+  - names: [osx-tuning]
+    when_os: [mac]
+
+# Repo-level imperative setup actions previously owned by dotf-setup.
+steps:
+  - name: disable Python externally-managed marker
+    os: [linux]
+    if: test -e /usr/lib/python3.11/EXTERNALLY-MANAGED
+    run: sudo mv /usr/lib/python3.11/EXTERNALLY-MANAGED /usr/lib/python3.11/EXTERNALLY-MANAGED.disabled
+
+  - name: cache Deno scripts
+    cwd: extra/scripts/deno
+    run: bash -lc 'deno cache ./**/*.ts'
+
+  - name: install npm packages
+    run: dfl pkg npm install cloc fx json live-server yarn htmlhint marked markserv name-that-color neovim
+
+  - name: link iCloud directory
+    os: [mac]
+    run: dfl symlink "$HOME/Library/Mobile Documents/com~apple~CloudDocs" "$HOME/iCloud"

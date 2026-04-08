@@ -9,7 +9,7 @@ The goals are:
 - Replace `dotf-setup` with `dfl setup`.
 - Replace `dotf-component` with `dfl install`.
 - Preserve the current shell `install` scripts during the first migration.
-- Support a future migration from `install` scripts to `install.toml` for simple components.
+- Support a future migration from `install` scripts to `install.yaml` for simple components.
 
 This is intentionally scoped for the first implementation milestone. It does
 not attempt to redesign every existing helper script in the repo.
@@ -38,7 +38,7 @@ And each top-level operation should be able to include child operations or messa
 ## Non-goals
 
 - Replace every existing shell utility under `core/scripts` or `extra/scripts`.
-- Express complex installation logic purely in TOML.
+- Express complex installation logic purely in YAML.
 - Remove shell scripts immediately.
 - Build a general-purpose package manager.
 
@@ -47,7 +47,7 @@ And each top-level operation should be able to include child operations or messa
 - `repo root`: the dotfiles repository root.
 - `component`: an installable unit under `core/`, `extra/`, or a future plugin location.
 - `runtime command`: a `dfl` subcommand used by component installers, replacing a shell helper.
-- `manifest`: an `install.toml` file describing a component declaratively.
+- `manifest`: an `install.yaml` file describing a component declaratively.
 
 ## User-facing CLI
 
@@ -57,7 +57,7 @@ Installs the default machine setup.
 
 Responsibilities:
 
-- Read and execute the repo-level setup manifest at `setup/default.toml`.
+- Read and execute the repo-level setup manifest at `setup/default.yaml`.
 - Install the default component set declared there.
 - Run repo-level package/bootstrap steps declared there.
 - Print a final summary including failures and skipped items.
@@ -98,7 +98,7 @@ dfl i wezterm
 Responsibilities:
 
 - Resolve each component by name.
-- Load `install.toml` if present, otherwise execute `install`.
+- Load `install.yaml` if present, otherwise execute `install`.
 - Print a per-component summary.
 
 Suggested aliases:
@@ -161,23 +161,23 @@ This is optional for milestone 1, but the command name should be reserved.
 
 Resolution order:
 
-1. `core/<name>/install.toml`
+1. `core/<name>/install.yaml`
 2. `core/<name>/install`
 3. `core/<name>` if the component is a single executable file
-4. `extra/<name>/install.toml`
+4. `extra/<name>/install.yaml`
 5. `extra/<name>/install`
 6. `extra/<name>`
 7. future plugin paths
 
 For milestone 1, supported component entrypoints should be intentionally narrow:
 
-- `install.toml`
+- `install.yaml`
 - `install`
 
 No `install.*` support should be added. Existing leftovers such as `install.py` or the TypeScript
 experiment in `core/fzf/install.ts` should be replaced by either:
 
-- `install.toml` for declarative/simple components
+- `install.yaml` for declarative/simple components
 - `install` for shell-driven/imperative components
 
 Each resolved component has:
@@ -399,7 +399,7 @@ Reserve this capability as:
 
 Milestone 1 can defer implementation unless a migrated component depends on it.
 
-## `install.toml` format
+## `install.yaml` format
 
 The manifest format exists for simple and medium-complexity components.
 
@@ -426,21 +426,21 @@ script and optionally use helper scripts alongside it.
 
 ### Example
 
-```toml
-name = "tmux"
-kind = "core"
+```yaml
+name: tmux
+kind: core
 
-[when]
-os = ["mac", "linux"]
+when:
+  os: [mac, linux]
 
-[symlinks]
-"tmux.conf" = "~/.tmux.conf"
+symlinks:
+  tmux.conf: ~/.tmux.conf
 
-[[steps]]
-name = "tmux-256color"
-os = ["mac"]
-if_not = "infocmp tmux-256color >/dev/null 2>&1"
-run = "./install-tmux-256color"
+steps:
+  - name: tmux-256color
+    os: [mac]
+    if_not: infocmp tmux-256color >/dev/null 2>&1
+    run: ./install-tmux-256color
 ```
 
 ### Top-level fields
@@ -458,19 +458,19 @@ Optional but recommended. Expected values:
 
 For milestone 1 this is informational and validated against the resolved path.
 
-#### `[when]`
+#### `when`
 
 Optional component-level constraints.
 
 Supported fields:
 
-- `os = ["mac", "linux", "wsl"]`
+- `os: [mac, linux, wsl]`
 
 If the current OS does not match, the component is skipped cleanly.
 
 ### Declarative operations
 
-#### `[symlinks]`
+#### `symlinks`
 
 String-to-string map.
 
@@ -481,17 +481,17 @@ Rules:
 
 Example:
 
-```toml
-[symlinks]
-"config" = "~/.config/ghostty"
-"zshrc" = "~/.zshrc"
+```yaml
+symlinks:
+  config: ~/.config/ghostty
+  zshrc: ~/.zshrc
 ```
 
-#### `[copies]`
+#### `copies`
 
 String-to-string map.
 
-Rules match `[symlinks]` but perform file copies instead.
+Rules match `symlinks` but perform file copies instead.
 
 #### `mkdirs`
 
@@ -499,37 +499,36 @@ Array of paths or a table representation if options are added later.
 
 Initial simple form:
 
-```toml
-mkdirs = [
-  "~/.config",
-  "~/.local/share/applications",
-]
+```yaml
+mkdirs:
+  - ~/.config
+  - ~/.local/share/applications
 ```
 
 ### Packages
 
-#### `[[packages.<manager>]]`
+#### `packages.<manager>`
 
 Ordered package groups with optional conditions.
 
 Example:
 
-```toml
-[[packages.brew]]
-names = ["tmux", "reattach-to-user-namespace"]
+```yaml
+packages:
+  brew:
+    - names: [tmux, reattach-to-user-namespace]
 
-[[packages.apt]]
-names = ["tmux"]
+  apt:
+    - names: [tmux]
 
-[[packages.cargo]]
-names = ["eza"]
+  cargo:
+    - names: [eza]
 ```
 
 Supported fields:
 
-- package manager is declared by the table name, for example `[[packages.brew]]`,
-  `[[packages.apt]]`, `[[packages.npm]]`, `[[packages.pipx]]`, `[[packages.cargo]]`, or
-  `[[packages.snap]]`
+- package manager is declared by the key under `packages`, for example `packages.brew`,
+  `packages.apt`, `packages.npm`, `packages.pipx`, `packages.cargo`, or `packages.snap`
 - `names`: required array of package names
 - `tap`: optional Homebrew tap to ensure before installing the listed packages
 - `cask`: optional boolean for Homebrew cask installs
@@ -537,14 +536,14 @@ Supported fields:
 - `when_linux_distro`: optional list such as `debian`, `ubuntu`
 - `when_features`: optional feature tags such as `gui` or `kde`
 
-Use `names = [...]` even for a single package. This keeps the schema uniform and makes it easy to
+Use `names: [...]` even for a single package. This keeps the schema uniform and makes it easy to
 group packages that share the same conditions.
 
 The executor installs only package groups that match the current machine context.
 
 ### Imperative steps
 
-#### `[[steps]]`
+#### `steps`
 
 Ordered actions executed after declarative operations unless the implementation explicitly documents
 a different order.
@@ -561,16 +560,15 @@ Supported fields:
 
 Examples:
 
-```toml
-[[steps]]
-name = "restore plugins"
-run = "nvim --headless '+Lazy! restore' +qa"
+```yaml
+steps:
+  - name: restore plugins
+    run: nvim --headless '+Lazy! restore' +qa
 
-[[steps]]
-name = "setup terminfo"
-os = ["mac"]
-if_not = "infocmp tmux-256color >/dev/null 2>&1"
-run = "./install-tmux-256color"
+  - name: setup terminfo
+    os: [mac]
+    if_not: infocmp tmux-256color >/dev/null 2>&1
+    run: ./install-tmux-256color
 ```
 
 Design rule:
@@ -582,7 +580,7 @@ Design rule:
 
 For a manifest-backed component, the default execution order is:
 
-1. validate `[when]`
+1. validate `when`
 2. create `mkdirs`
 3. install `packages`
 4. apply `symlinks`
@@ -591,65 +589,63 @@ For a manifest-backed component, the default execution order is:
 
 This keeps the model simple and predictable.
 
-## `setup/default.toml`
+## `setup/default.yaml`
 
-`dfl setup` should read a repo-level manifest at `setup/default.toml`.
+`dfl setup` should read a repo-level manifest at `setup/default.yaml`.
 
-This file is similar to `install.toml`, but it exists for repo-wide setup orchestration rather than
+This file is similar to `install.yaml`, but it exists for repo-wide setup orchestration rather than
 for a single component.
 
 It should support:
 
-- top-level setup constraints via `[when]`
-- `[[packages.<manager>]]` using the same schema as component manifests
-- `[[repos]]` for cloning and updating required repositories
-- `[[steps]]` using the same schema as component manifests
-- `[[components]]` entries for component selection and conditional inclusion
+- top-level setup constraints via `when`
+- `packages.<manager>` using the same schema as component manifests
+- `repos` for cloning and updating required repositories
+- `steps` using the same schema as component manifests
+- `components` entries for component selection and conditional inclusion
 
 Suggested initial shape:
 
-```toml
-[repo_defaults]
-transport = "inherit"
+```yaml
+repo_defaults:
+  transport: inherit
 
-[[components]]
-names = ["fish", "nvim"]
+components:
+  - names: [fish, nvim]
+  - names: [osx-tuning]
+    when_os: [mac]
 
-[[components]]
-names = ["osx-tuning"]
-when_os = ["mac"]
+packages:
+  brew:
+    - names: [dff]
+      tap: elentok/stuff
 
-[[packages.brew]]
-names = ["dff"]
-tap = "elentok/stuff"
+repos:
+  - name: notes
+    github: elentok/notes
+    path: ~/notes
 
-[[repos]]
-name = "notes"
-github = "elentok/notes"
-path = "~/notes"
+  - name: work-wiki
+    github: myorg/wiki
+    path: ~/src/wiki
+    transport: https
 
-[[repos]]
-name = "work-wiki"
-github = "myorg/wiki"
-path = "~/src/wiki"
-transport = "https"
-
-[[steps]]
-name = "cache deno scripts"
-run = "cd extra/scripts/deno && deno cache ./**/*.ts"
+steps:
+  - name: cache deno scripts
+    run: cd extra/scripts/deno && deno cache ./**/*.ts
 ```
 
-Setup-level `[[steps]]` are the place for repo-wide actions that are not naturally owned by a
+Setup-level `steps` are the place for repo-wide actions that are not naturally owned by a
 single component, such as bootstrapping caches or creating top-level convenience symlinks.
 
-`[[components]]` entries should support at least:
+`components` entries should support at least:
 
 - `names`: required array of component names
 - `when_os`: optional list of `mac`, `linux`, `wsl`
 - `when_linux_distro`: optional list such as `debian`, `ubuntu`
 - `when_features`: optional feature tags such as `gui` or `kde`
 
-`[[repos]]` entries should support at least:
+`repos` entries should support at least:
 
 - `name`: required
 - `path`: required
@@ -659,7 +655,7 @@ single component, such as bootstrapping caches or creating top-level convenience
 - `when_linux_distro`: optional list such as `debian`, `ubuntu`
 - `when_features`: optional feature tags such as `gui` or `kde`
 
-`[repo_defaults]` should support:
+`repo_defaults` should support:
 
 - `transport`: default transport policy for generated repo URLs; initial values should be
   `inherit`, `ssh`, or `https`
@@ -684,8 +680,8 @@ Repo execution behavior:
 - if the pull fails because the branch diverged, report the repo as `failed` with an explicit
   divergence message
 
-`osx-tuning` should remain a normal component and be included from `setup/default.toml` using a
-conditional `[[components]]` entry rather than being treated as a special built-in case.
+`osx-tuning` should remain a normal component and be included from `setup/default.yaml` using a
+conditional `components` entry rather than being treated as a special built-in case.
 
 ## Dry-run behavior
 
@@ -728,7 +724,7 @@ Suggested default:
 
 ### Phase 2
 
-- Add `install.toml`
+- Add `install.yaml`
 - Convert the simplest components first
 - Keep support for shell installers for complex components
 
@@ -774,19 +770,18 @@ dfl shell "Installing tmux plugins" -- "$DFL_COMPONENT_ROOT/install-plugins"
 
 Later manifest candidate:
 
-```toml
-[symlinks]
-"tmux.conf" = "~/.tmux.conf"
+```yaml
+symlinks:
+  tmux.conf: ~/.tmux.conf
 
-[[steps]]
-name = "tmux-256color"
-os = ["mac"]
-if_not = "infocmp tmux-256color >/dev/null 2>&1"
-run = "./install-tmux-256color"
+steps:
+  - name: tmux-256color
+    os: [mac]
+    if_not: infocmp tmux-256color >/dev/null 2>&1
+    run: ./install-tmux-256color
 
-[[steps]]
-name = "plugins"
-run = "./install-plugins"
+  - name: plugins
+    run: ./install-plugins
 ```
 
 ### `extra/ssh`
@@ -797,17 +792,17 @@ Current behavior:
 - symlink `config`
 - create `~/.ssh/machine.config` if missing
 
-This is a strong early `install.toml` candidate:
+This is a strong early `install.yaml` candidate:
 
-```toml
-[symlinks]
-"rc" = "~/.ssh/rc"
-"config" = "~/.ssh/config"
+```yaml
+symlinks:
+  rc: ~/.ssh/rc
+  config: ~/.ssh/config
 
-[[steps]]
-name = "machine config"
-if_not = "test -e ~/.ssh/machine.config"
-run = "printf '# vim: syntax=sshconfig\n' > ~/.ssh/machine.config"
+steps:
+  - name: machine config
+    if_not: test -e ~/.ssh/machine.config
+    run: "printf '# vim: syntax=sshconfig\\n' > ~/.ssh/machine.config"
 ```
 
 ### `core/nvim`
@@ -829,18 +824,18 @@ The shell installer should still use `dfl symlink` and `dfl shell` where it impr
 
 ## Implementation decisions
 
-- `dfl setup` should read `setup/default.toml` rather than using a hardcoded component list
+- `dfl setup` should read `setup/default.yaml` rather than using a hardcoded component list
 - repo-wide setup concerns such as shared packages, repo synchronization, and non-component setup
-  steps should live in `setup/default.toml`
-- repo synchronization should be a first-class `[[repos]]` section in `setup/default.toml`, and
+  steps should live in `setup/default.yaml`
+- repo synchronization should be a first-class `repos` section in `setup/default.yaml`, and
   `--skip-repos` should skip that phase
 - repos should clone if missing and otherwise run `git pull --ff-only`
 - GitHub repo transport should default to inheriting the dotfiles repo `origin` remote style, with
   per-repo overrides for `ssh` or `https`
-- package definitions should move out of `packages.cfg` into TOML now, but remain repo-level before
-  later migration into component `install.toml` files
-- package groups should use `[[packages.<manager>]]` entries with `names = [...]` and optional conditions
-- setup-level `[[steps]]` should use the same model as component-manifest `[[steps]]`
+- package definitions should move out of `packages.cfg` into YAML now, but remain repo-level before
+  later migration into component `install.yaml` files
+- package groups should use `packages.<manager>` entries with `names: [...]` and optional conditions
+- setup-level `steps` should use the same model as component-manifest `steps`
 - milestone 1 should keep `framework.sh` as a compatibility layer and migrate installers
   incrementally rather than rewriting every install script up front
 - backups should use `<target>.backup` by default and fall back to a timestamped backup name when

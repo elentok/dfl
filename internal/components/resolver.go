@@ -62,7 +62,7 @@ func candidates(repoRoot, name string) []candidate {
 			Kind:          KindCore,
 			Root:          coreRoot,
 			InstallerType: InstallerManifest,
-			EntryPoint:    filepath.Join(coreRoot, "install.toml"),
+			EntryPoint:    filepath.Join(coreRoot, "install.yaml"),
 		},
 		{
 			Kind:          KindCore,
@@ -74,7 +74,7 @@ func candidates(repoRoot, name string) []candidate {
 			Kind:          KindExtra,
 			Root:          extraRoot,
 			InstallerType: InstallerManifest,
-			EntryPoint:    filepath.Join(extraRoot, "install.toml"),
+			EntryPoint:    filepath.Join(extraRoot, "install.yaml"),
 		},
 		{
 			Kind:          KindExtra,

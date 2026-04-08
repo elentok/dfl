@@ -7,29 +7,30 @@ import (
 
 func TestParseInstallBytesParsesSupportedFields(t *testing.T) {
 	data := []byte(`
-name = "tmux"
-kind = "core"
-mkdirs = ["~/.config"]
+name: tmux
+kind: core
+mkdirs: ["~/.config"]
 
-[when]
-os = ["mac", "linux"]
+when:
+  os: [mac, linux]
 
-[symlinks]
-"tmux.conf" = "~/.tmux.conf"
+symlinks:
+  tmux.conf: ~/.tmux.conf
 
-[copies]
-"a.txt" = "~/.a.txt"
+copies:
+  a.txt: ~/.a.txt
 
-[[packages.brew]]
-names = ["tmux"]
-tap = "elentok/stuff"
+packages:
+  brew:
+    - names: [tmux]
+      tap: elentok/stuff
 
-[[steps]]
-name = "restore"
-os = ["mac"]
-if_not = "test -e foo"
-cwd = "."
-run = "./restore"
+steps:
+  - name: restore
+    os: [mac]
+    if_not: test -e foo
+    cwd: .
+    run: ./restore
 `)
 
 	m, err := ParseInstallBytes(data)
@@ -52,29 +53,28 @@ run = "./restore"
 
 func TestParseSetupBytesParsesSetupSpecificSections(t *testing.T) {
 	data := []byte(`
-[repo_defaults]
-transport = "inherit"
+repo_defaults:
+  transport: inherit
 
-[[components]]
-names = ["fish"]
+components:
+  - names: [fish]
+  - names: [osx-tuning]
+    when_os: [mac]
 
-[[components]]
-names = ["osx-tuning"]
-when_os = ["mac"]
+packages:
+  brew:
+    - names: [dff]
+      tap: elentok/stuff
 
-[[packages.brew]]
-names = ["dff"]
-tap = "elentok/stuff"
+repos:
+  - name: notes
+    github: elentok/notes
+    path: ~/notes
+    transport: https
 
-[[repos]]
-name = "notes"
-github = "elentok/notes"
-path = "~/notes"
-transport = "https"
-
-[[steps]]
-name = "cache"
-run = "deno cache ./**/*.ts"
+steps:
+  - name: cache
+    run: deno cache ./**/*.ts
 `)
 
 	m, err := ParseSetupBytes(data)
@@ -94,31 +94,32 @@ run = "deno cache ./**/*.ts"
 
 func TestParseInstallBytesRejectsUnknownFields(t *testing.T) {
 	_, err := ParseInstallBytes([]byte(`
-name = "tmux"
-unknown = "x"
+name: tmux
+unknown: x
 `))
-	if err == nil || !strings.Contains(err.Error(), "unknown manifest fields") {
+	if err == nil || !strings.Contains(err.Error(), "field unknown not found") {
 		t.Fatalf("err = %v, want unknown field error", err)
 	}
 }
 
 func TestValidateInstallRejectsUnsupportedPackageManager(t *testing.T) {
 	_, err := ParseInstallBytes([]byte(`
-[[packages.mason]]
-names = ["stylua"]
+packages:
+  mason:
+    - names: [stylua]
 `))
-	if err == nil || !strings.Contains(err.Error(), `unknown manifest fields`) {
+	if err == nil || !strings.Contains(err.Error(), `field mason not found`) {
 		t.Fatalf("err = %v, want unknown package manager field error", err)
 	}
 }
 
 func TestValidateSetupRejectsInvalidRepoShape(t *testing.T) {
 	_, err := ParseSetupBytes([]byte(`
-[[repos]]
-name = "notes"
-path = "~/notes"
-github = "elentok/notes"
-url = "https://github.com/elentok/notes.git"
+repos:
+  - name: notes
+    path: ~/notes
+    github: elentok/notes
+    url: https://github.com/elentok/notes.git
 `))
 	if err == nil || !strings.Contains(err.Error(), "must define exactly one of github or url") {
 		t.Fatalf("err = %v, want invalid repo error", err)
