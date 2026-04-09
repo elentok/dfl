@@ -29,9 +29,47 @@ func (a *App) newHasCommandCommand() *cobra.Command {
 	}
 }
 
+func (a *App) newAskCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "ask <question> [default]",
+		Short: "Prompt for a value and print the result",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			defaultValue := ""
+			if len(args) == 2 {
+				defaultValue = args[1]
+			}
+			value, err := (runtimecmd.Runner{
+				Stdin:  a.stdinReader(),
+				Stdout: a.stdoutWriter(),
+				Stderr: a.stderrWriter(),
+			}).Ask(args[0], defaultValue)
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintln(a.stdoutWriter(), value)
+			return err
+		},
+	}
+}
+
+func (a *App) newStepCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "step",
+		Short: "Print step output",
+	}
+	cmd.AddCommand(
+		a.newStepStartCommand(),
+		a.newStepStatusCommand("success", runtime.StatusSuccess, "Print a success step line"),
+		a.newStepStatusCommand("skip", runtime.StatusSkipped, "Print a skipped step line"),
+		a.newStepStatusCommand("error", runtime.StatusFailed, "Print an error step line"),
+	)
+	return cmd
+}
+
 func (a *App) newStepStartCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "step-start <message...>",
+		Use:   "start <message...>",
 		Short: "Print a step start line",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -40,48 +78,24 @@ func (a *App) newStepStartCommand() *cobra.Command {
 	}
 }
 
-func (a *App) newStepEndCommand() *cobra.Command {
-	kind := ""
-	cmd := &cobra.Command{
-		Use:   "step-end [message...]",
-		Short: "Print a step end line",
+func (a *App) newStepStatusCommand(name string, status runtime.ResultStatus, short string) *cobra.Command {
+	return &cobra.Command{
+		Use:   name + " [message...]",
+		Short: short,
 		Args:  cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			status, err := statusFromKind(kind)
-			if err != nil {
-				return exitError{code: 2, err: err}
+			message := strings.Join(args, " ")
+			if message == "" {
+				switch status {
+				case runtime.StatusSuccess:
+					message = "done"
+				case runtime.StatusFailed:
+					message = "failed"
+				}
 			}
-			return (runtimecmd.Runner{Stdout: a.stdoutWriter()}).StepEnd(status, strings.Join(args, " "))
+			return (runtimecmd.Runner{Stdout: a.stdoutWriter()}).StepEnd(status, message)
 		},
 	}
-	cmd.Flags().StringVar(&kind, "status", "", "Status: success, skip, or error")
-	_ = cmd.RegisterFlagCompletionFunc("status", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-		return []string{"success", "skip", "error"}, cobra.ShellCompDirectiveNoFileComp
-	})
-	cmd.Flags().Bool("success", false, "Shortcut for --status success")
-	cmd.Flags().Bool("skip", false, "Shortcut for --status skip")
-	cmd.Flags().Bool("error", false, "Shortcut for --status error")
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		shortcuts := map[string]string{
-			"success": "success",
-			"skip":    "skip",
-			"error":   "error",
-		}
-		for flag, value := range shortcuts {
-			on, err := cmd.Flags().GetBool(flag)
-			if err != nil {
-				return err
-			}
-			if on {
-				if kind != "" && kind != value {
-					return exitError{code: 2, err: fmt.Errorf("conflicting step-end status flags")}
-				}
-				kind = value
-			}
-		}
-		return nil
-	}
-	return cmd
 }
 
 func (a *App) newShellCommand() *cobra.Command {
@@ -106,10 +120,58 @@ func (a *App) newShellCommand() *cobra.Command {
 	}
 }
 
+func (a *App) newGitCloneCommand() *cobra.Command {
+	var update bool
+	cmd := &cobra.Command{
+		Use:   "git-clone <origin> <target>",
+		Short: "Clone a git repository, backing up conflicting targets",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, err := a.runtimeContext()
+			if err != nil {
+				return err
+			}
+			label := fmt.Sprintf("Cloning %s", args[0])
+			if err := ui.StepStart(a.stdoutWriter(), label); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(a.stdoutWriter(), "       => %s\n", args[1]); err != nil {
+				return err
+			}
+			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).GitClone(ctx, args[0], args[1], update)
+			if err != nil {
+				return err
+			}
+			return ui.StepEnd(a.stdoutWriter(), status, message)
+		},
+	}
+	cmd.Flags().BoolVar(&update, "update", false, "Pull an already cloned repo if the origin matches")
+	return cmd
+}
+
 func (a *App) newSymlinkCommand() *cobra.Command {
-	return a.newFilesystemCommand("symlink", "<source> <target>", cobra.ExactArgs(2), func(ctx runtime.Context, args []string) (runtime.ResultStatus, string, error) {
-		return (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Symlink(ctx, componentRoot(), args[0], args[1])
-	})
+	return &cobra.Command{
+		Use:   "symlink <source> <target>",
+		Short: "symlink",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, err := a.runtimeContext()
+			if err != nil {
+				return err
+			}
+			if err := ui.StepStart(a.stdoutWriter(), fmt.Sprintf("Linking %s", args[0])); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(a.stdoutWriter(), "       => %s\n", args[1]); err != nil {
+				return err
+			}
+			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Symlink(ctx, componentRoot(), args[0], args[1])
+			if err != nil {
+				return err
+			}
+			return ui.StepEnd(a.stdoutWriter(), status, message)
+		},
+	}
 }
 
 func (a *App) newCopyCommand() *cobra.Command {
@@ -119,9 +181,25 @@ func (a *App) newCopyCommand() *cobra.Command {
 }
 
 func (a *App) newMkdirCommand() *cobra.Command {
-	return a.newFilesystemCommand("mkdir", "<path>", cobra.ExactArgs(1), func(ctx runtime.Context, args []string) (runtime.ResultStatus, string, error) {
-		return (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Mkdir(ctx, args[0])
-	})
+	return &cobra.Command{
+		Use:   "mkdir <path>",
+		Short: "mkdir",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, err := a.runtimeContext()
+			if err != nil {
+				return err
+			}
+			if err := ui.StepStart(a.stdoutWriter(), fmt.Sprintf("Creating %s", args[0])); err != nil {
+				return err
+			}
+			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Mkdir(ctx, args[0])
+			if err != nil {
+				return err
+			}
+			return ui.StepEnd(a.stdoutWriter(), status, message)
+		},
+	}
 }
 
 func (a *App) newBackupCommand() *cobra.Command {

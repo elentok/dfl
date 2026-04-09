@@ -47,11 +47,11 @@ func statusStyle(status runtimectx.ResultStatus) (lipgloss.Style, string) {
 	case runtimectx.StatusSuccess:
 		return stepSuccessStyle, "✓"
 	case runtimectx.StatusSkipped:
-		return stepSkippedStyle, "•"
+		return stepSkippedStyle, "○"
 	case runtimectx.StatusFailed:
 		return stepFailedStyle, "✗"
 	default:
-		return stepSkippedStyle, "•"
+		return stepSkippedStyle, "○"
 	}
 }
 
@@ -66,4 +66,14 @@ func Step(w io.Writer, message string, fn func() (runtimectx.ResultStatus, strin
 	}
 
 	return StepEnd(w, status, detail)
+}
+
+func Success(w io.Writer, message string) error {
+	_, err := fmt.Fprintf(w, "%s\n", stepSuccessStyle.Render("✔ "+message))
+	return err
+}
+
+func Error(w io.Writer, message string) error {
+	_, err := fmt.Fprintf(w, "%s\n", stepFailedStyle.Render("✘ "+message))
+	return err
 }

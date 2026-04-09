@@ -37,7 +37,12 @@ func (r Runner) Install(ctx runtimectx.Context, names []string) (int, error) {
 		component, err := components.Resolve(ctx.RepoRoot, name)
 		if err != nil {
 			if errors.Is(err, components.ErrComponentNotFound) {
-				fmt.Fprintf(stderr, "component %q not found\n", name)
+				if _, writeErr := fmt.Fprintln(stderr); writeErr != nil {
+					return 1, writeErr
+				}
+				if writeErr := ui.Error(stderr, fmt.Sprintf("component %q not found", name)); writeErr != nil {
+					return 1, writeErr
+				}
 				return 1, nil
 			}
 			return 1, err
@@ -48,11 +53,21 @@ func (r Runner) Install(ctx runtimectx.Context, names []string) (int, error) {
 		}
 
 		if err := r.installComponent(ctx, component); err != nil {
-			fmt.Fprintf(stderr, "component %q failed: %v\n", component.Name, err)
+			if _, writeErr := fmt.Fprintln(stderr); writeErr != nil {
+				return 1, writeErr
+			}
+			if writeErr := ui.Error(stderr, fmt.Sprintf("%s failed to install: %v", component.Name, err)); writeErr != nil {
+				return 1, writeErr
+			}
 			return 1, nil
 		}
 
-		fmt.Fprintf(stdout, "component %q: success\n", component.Name)
+		if _, err := fmt.Fprintln(stdout); err != nil {
+			return 1, err
+		}
+		if err := ui.Success(stdout, fmt.Sprintf("%s installed successfully", component.Name)); err != nil {
+			return 1, err
+		}
 	}
 
 	return 0, nil

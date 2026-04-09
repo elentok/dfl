@@ -1,6 +1,7 @@
 package runtimecmd
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 )
 
 type Runner struct {
+	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
 }
@@ -36,6 +38,33 @@ func (o Runner) HasCommand(name string) (bool, error) {
 	}
 
 	return false, err
+}
+
+func (o Runner) Ask(question, defaultValue string) (string, error) {
+	promptWriter := o.stderr()
+	if _, err := fmt.Fprintf(promptWriter, "%s ", question); err != nil {
+		return "", err
+	}
+	if defaultValue != "" {
+		if _, err := fmt.Fprintf(promptWriter, "[%s] ", defaultValue); err != nil {
+			return "", err
+		}
+	}
+
+	reader := bufio.NewReader(o.stdin())
+	reply, err := reader.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	if _, err := fmt.Fprintln(promptWriter); err != nil {
+		return "", err
+	}
+
+	reply = strings.TrimSpace(reply)
+	if reply == "" {
+		reply = defaultValue
+	}
+	return reply, nil
 }
 
 func (o Runner) StepStart(message string) error {
@@ -88,12 +117,70 @@ func (o Runner) Shell(ctx runtimectx.Context, name string, command []string) (in
 	return 0, nil
 }
 
+func (o Runner) GitClone(ctx runtimectx.Context, origin, target string, update bool) (runtimectx.ResultStatus, string, error) {
+	resolvedTarget, err := expandPath(target)
+	if err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	info, err := os.Stat(resolvedTarget)
+	if err == nil && info.IsDir() {
+		gitDir := filepath.Join(resolvedTarget, ".git")
+		if gitInfo, gitErr := os.Stat(gitDir); gitErr == nil && gitInfo.IsDir() {
+			currentOrigin, gitErr := gitOrigin(resolvedTarget)
+			if gitErr != nil {
+				return runtimectx.StatusFailed, "", gitErr
+			}
+			if currentOrigin == origin {
+				if update {
+					if ctx.DryRun {
+						return runtimectx.StatusSuccess, fmt.Sprintf("already cloned, would update %s", resolvedTarget), nil
+					}
+					if err := gitPull(resolvedTarget); err != nil {
+						return runtimectx.StatusFailed, "", err
+					}
+					return runtimectx.StatusSuccess, fmt.Sprintf("already cloned, updated %s", resolvedTarget), nil
+				}
+				return runtimectx.StatusSkipped, fmt.Sprintf("already cloned at %s", resolvedTarget), nil
+			}
+		}
+
+		backupPath, err := o.Backup(ctx, resolvedTarget)
+		if err != nil {
+			return runtimectx.StatusFailed, "", err
+		}
+		if ctx.DryRun {
+			return runtimectx.StatusSuccess, fmt.Sprintf("would back up to %s and clone %s into %s", backupPath, origin, resolvedTarget), nil
+		}
+	}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	if ctx.DryRun {
+		return runtimectx.StatusSuccess, fmt.Sprintf("would clone %s into %s", origin, resolvedTarget), nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(resolvedTarget), 0o755); err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	cmd := exec.Command("git", "clone", origin, resolvedTarget)
+	cmd.Stdout = o.stdout()
+	cmd.Stderr = o.stderr()
+	if err := cmd.Run(); err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+	return runtimectx.StatusSuccess, fmt.Sprintf("cloned %s into %s", origin, resolvedTarget), nil
+}
+
 func (o Runner) Symlink(ctx runtimectx.Context, componentRoot, source, target string) (runtimectx.ResultStatus, string, error) {
 	resolvedSource, resolvedTarget, err := resolvePaths(componentRoot, source, target)
 	if err != nil {
 		return runtimectx.StatusFailed, "", err
 	}
 
+	var backupPath string
 	if info, err := os.Lstat(resolvedTarget); err == nil {
 		if info.Mode()&os.ModeSymlink != 0 {
 			current, err := os.Readlink(resolvedTarget)
@@ -101,11 +188,12 @@ func (o Runner) Symlink(ctx runtimectx.Context, componentRoot, source, target st
 				return runtimectx.StatusFailed, "", err
 			}
 			if samePath(current, resolvedSource, filepath.Dir(resolvedTarget)) {
-				return runtimectx.StatusSkipped, "already linked", nil
+				return runtimectx.StatusSkipped, fmt.Sprintf("already exists at %s", resolvedTarget), nil
 			}
 		}
 
-		if _, err := o.Backup(ctx, resolvedTarget); err != nil {
+		backupPath, err = o.Backup(ctx, resolvedTarget)
+		if err != nil {
 			return runtimectx.StatusFailed, "", err
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -113,6 +201,9 @@ func (o Runner) Symlink(ctx runtimectx.Context, componentRoot, source, target st
 	}
 
 	if ctx.DryRun {
+		if backupPath != "" {
+			return runtimectx.StatusSuccess, fmt.Sprintf("would back up to %s and link %s -> %s", backupPath, resolvedTarget, resolvedSource), nil
+		}
 		return runtimectx.StatusSuccess, fmt.Sprintf("would link %s -> %s", resolvedTarget, resolvedSource), nil
 	}
 
@@ -126,7 +217,10 @@ func (o Runner) Symlink(ctx runtimectx.Context, componentRoot, source, target st
 		return runtimectx.StatusFailed, "", err
 	}
 
-	return runtimectx.StatusSuccess, fmt.Sprintf("linked %s", resolvedTarget), nil
+	if backupPath != "" {
+		return runtimectx.StatusSuccess, fmt.Sprintf("backed up to %s and linked %s -> %s", backupPath, resolvedTarget, resolvedSource), nil
+	}
+	return runtimectx.StatusSuccess, fmt.Sprintf("linked %s -> %s", resolvedTarget, resolvedSource), nil
 }
 
 func (o Runner) Copy(ctx runtimectx.Context, componentRoot, source, target string) (runtimectx.ResultStatus, string, error) {
@@ -305,6 +399,26 @@ func nextBackupPath(path string) (string, error) {
 	return fmt.Sprintf("%s.backup.%s", path, timestamp), nil
 }
 
+func gitOrigin(dir string) (string, error) {
+	cmd := exec.Command("git", "remote", "get-url", "origin")
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git remote get-url origin failed: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func gitPull(dir string) error {
+	cmd := exec.Command("git", "pull")
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git pull failed: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+	return nil
+}
+
 func (o Runner) stdout() io.Writer {
 	if o.Stdout == nil {
 		return io.Discard
@@ -317,4 +431,11 @@ func (o Runner) stderr() io.Writer {
 		return io.Discard
 	}
 	return o.Stderr
+}
+
+func (o Runner) stdin() io.Reader {
+	if o.Stdin == nil {
+		return os.Stdin
+	}
+	return o.Stdin
 }

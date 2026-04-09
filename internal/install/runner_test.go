@@ -61,7 +61,7 @@ func TestInstallReturnsErrorForMissingComponent(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("Install returned code %d, want 1", code)
 	}
-	if !strings.Contains(stderr.String(), `component "missing" not found`) {
+	if !strings.Contains(stderr.String(), `✘ component "missing" not found`) {
 		t.Fatalf("stderr = %q, want missing component output", stderr.String())
 	}
 }

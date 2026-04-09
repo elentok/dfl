@@ -38,7 +38,7 @@ compatibility layer during migration.
 ## Step 3: Implement core runtime commands
 
 - [x] Implement `dfl os is-mac`, `dfl os is-linux`, `dfl os is-wsl`, and `dfl has-command`.
-- [x] Implement `dfl step-start` and `dfl step-end`.
+- [x] Implement `dfl step start` and `dfl step success|skip|error`.
 - [x] Implement `dfl shell <name> -- <command...>` with streamed output and exit-code propagation.
 - [x] Implement `dfl symlink`, `dfl copy`, `dfl mkdir`, and `dfl backup`.
 - [x] Implement backup behavior as `<target>.backup` first, then timestamped fallback on

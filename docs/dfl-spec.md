@@ -290,11 +290,11 @@ This replaces `dotf-backup`.
 
 ### Steps and output
 
-#### `dfl step-start <message>`
+#### `dfl step start <message>`
 
 Starts a step with consistent UI formatting.
 
-#### `dfl step-end --success|--skip|--error [message]`
+#### `dfl step success|skip|error [message]`
 
 Finishes the current step.
 
@@ -752,14 +752,14 @@ set -euo pipefail
 dfl symlink tmux.conf ~/.tmux.conf
 
 if dfl os is-mac; then
-  dfl step-start "Setting up tmux-256color terminfo"
+  dfl step start "Setting up tmux-256color terminfo"
   if infocmp tmux-256color >/dev/null 2>&1; then
-    dfl step-end --skip "already set up"
+    dfl step skip "already set up"
   else
     if ./install-tmux-256color; then
-      dfl step-end --success
+      dfl step success
     else
-      dfl step-end --error
+      dfl step error
       exit 1
     fi
   fi

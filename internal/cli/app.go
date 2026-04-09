@@ -10,6 +10,7 @@ import (
 )
 
 type App struct {
+	stdin  io.Reader
 	stdout io.Writer
 	stderr io.Writer
 	dryRun bool
@@ -33,6 +34,10 @@ func NewApp() *App {
 
 func (a *App) SetStdout(w io.Writer) {
 	a.stdout = w
+}
+
+func (a *App) SetStdin(r io.Reader) {
+	a.stdin = r
 }
 
 func (a *App) SetStderr(w io.Writer) {
@@ -90,6 +95,13 @@ func (a *App) stdoutWriter() io.Writer {
 	return os.Stdout
 }
 
+func (a *App) stdinReader() io.Reader {
+	if a.stdin != nil {
+		return a.stdin
+	}
+	return os.Stdin
+}
+
 func (a *App) stderrWriter() io.Writer {
 	if a.stderr != nil {
 		return a.stderr
@@ -99,19 +111,6 @@ func (a *App) stderrWriter() io.Writer {
 
 func isHelpArg(arg string) bool {
 	return arg == "-h" || arg == "--help"
-}
-
-func statusFromKind(kind string) (runtime.ResultStatus, error) {
-	switch kind {
-	case "success":
-		return runtime.StatusSuccess, nil
-	case "skip":
-		return runtime.StatusSkipped, nil
-	case "error":
-		return runtime.StatusFailed, nil
-	default:
-		return "", fmt.Errorf("step-end requires one of --status success|skip|error or the matching shortcut flag")
-	}
 }
 
 func componentRoot() string {
