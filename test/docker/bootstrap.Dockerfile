@@ -6,7 +6,8 @@ WORKDIR /repo
 
 COPY bootstrap ./bootstrap
 
-RUN mkdir -p .git setup \
-  && touch setup/default.yaml
+RUN mkdir -p .git \
+  && printf '#!/bin/sh\nexit 0\n' > setup \
+  && chmod +x setup
 
 RUN HOME=/tmp/dfl-home DFL_ROOT=/repo PATH="/bin:/usr/bin" ./bootstrap

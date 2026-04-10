@@ -16,8 +16,7 @@ const (
 type InstallerType string
 
 const (
-	InstallerManifest InstallerType = "manifest"
-	InstallerScript   InstallerType = "script"
+	InstallerScript InstallerType = "script"
 )
 
 type Component struct {
@@ -63,12 +62,6 @@ func candidates(repoRoot, name string) []candidate {
 		{
 			Kind:          KindCore,
 			Root:          coreRoot,
-			InstallerType: InstallerManifest,
-			EntryPoint:    filepath.Join(coreRoot, "install.yaml"),
-		},
-		{
-			Kind:          KindCore,
-			Root:          coreRoot,
 			InstallerType: InstallerScript,
 			EntryPoint:    filepath.Join(coreRoot, "install"),
 		},
@@ -77,12 +70,6 @@ func candidates(repoRoot, name string) []candidate {
 			Root:          filepath.Dir(coreFile),
 			InstallerType: InstallerScript,
 			EntryPoint:    coreFile,
-		},
-		{
-			Kind:          KindExtra,
-			Root:          extraRoot,
-			InstallerType: InstallerManifest,
-			EntryPoint:    filepath.Join(extraRoot, "install.yaml"),
 		},
 		{
 			Kind:          KindExtra,

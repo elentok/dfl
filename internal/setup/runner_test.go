@@ -7,189 +7,103 @@ import (
 	"strings"
 	"testing"
 
-	"dfl/internal/manifest"
-	"dfl/internal/packagemgr"
 	runtimectx "dfl/internal/runtime"
 )
 
-func TestRunLoadsSetupManifestAndFiltersComponents(t *testing.T) {
+func TestRunExecutesRepoSetupScriptFromRepoRoot(t *testing.T) {
 	repoRoot := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(repoRoot, "setup"), 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	setupFile := `
-components:
-  - names: [fish, nvim]
-`
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.yaml"), []byte(setupFile), 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+	marker := filepath.Join(repoRoot, "setup-ran")
+	script := "#!/bin/sh\npwd > pwd.txt\ntouch \"" + marker + "\"\n"
+	if err := os.WriteFile(filepath.Join(repoRoot, "setup"), []byte(script), 0o755); err != nil {
+		t.Fatalf("WriteFile setup: %v", err)
 	}
 
 	var stdout bytes.Buffer
-	component := &fakeComponentInstaller{}
-	runner := Runner{Stdout: &stdout, ComponentInstaller: component, PackageInstaller: fakePackageInstaller{}, RepoSyncer: fakeRepoSyncer{}, StepExecutor: fakeStepExecutor{}}
+	var stderr bytes.Buffer
+	runner := Runner{Stdout: &stdout, Stderr: &stderr}
 
-	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot, OS: runtimectx.OSMac}, Options{Components: []string{"nvim"}})
+	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot})
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
 	if code != 0 {
 		t.Fatalf("Run returned code %d, want 0", code)
 	}
-	if strings.Join(component.names, " ") != "nvim" {
-		t.Fatalf("component names = %v, want [nvim]", component.names)
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("setup marker missing: %v", err)
+	}
+
+	wd, err := os.ReadFile(filepath.Join(repoRoot, "pwd.txt"))
+	if err != nil {
+		t.Fatalf("ReadFile pwd.txt: %v", err)
+	}
+	gotPath := strings.TrimSpace(string(wd))
+	wantPath, err := filepath.EvalSymlinks(repoRoot)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(repoRoot): %v", err)
+	}
+	gotPath, err = filepath.EvalSymlinks(gotPath)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(script cwd): %v", err)
+	}
+	if gotPath != wantPath {
+		t.Fatalf("script cwd = %q, want %q", gotPath, wantPath)
 	}
 }
 
-func TestRunSupportsSkipPackagesAndSkipRepos(t *testing.T) {
+func TestRunRespectsSetupShebang(t *testing.T) {
 	repoRoot := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(repoRoot, "setup"), 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	setupFile := `
-packages:
-  brew:
-    - names: [gx]
-
-repos:
-  - name: notes
-    github: elentok/notes
-    path: ~/notes
-`
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.yaml"), []byte(setupFile), 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+	outputFile := filepath.Join(repoRoot, "bash.txt")
+	script := "#!/usr/bin/env bash\nfunction hello-world() {\n  echo bash > \"" + outputFile + "\"\n}\nhello-world\n"
+	if err := os.WriteFile(filepath.Join(repoRoot, "setup"), []byte(script), 0o755); err != nil {
+		t.Fatalf("WriteFile setup: %v", err)
 	}
 
-	var stdout bytes.Buffer
-	pkgs := &trackingPackageInstaller{}
-	repos := &trackingRepoSyncer{}
-	runner := Runner{Stdout: &stdout, ComponentInstaller: &fakeComponentInstaller{}, PackageInstaller: pkgs, RepoSyncer: repos, StepExecutor: fakeStepExecutor{}}
-
-	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot, OS: runtimectx.OSMac}, Options{SkipPackages: true, SkipRepos: true})
+	runner := Runner{}
+	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot})
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
 	if code != 0 {
 		t.Fatalf("Run returned code %d, want 0", code)
 	}
-	if pkgs.called {
-		t.Fatal("package installer was called, want skipped")
+
+	data, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Fatalf("ReadFile bash.txt: %v", err)
 	}
-	if repos.called {
-		t.Fatal("repo syncer was called, want skipped")
-	}
-	if !strings.Contains(stdout.String(), "skipped by flag") {
-		t.Fatalf("stdout = %q, want skip message", stdout.String())
+	if strings.TrimSpace(string(data)) != "bash" {
+		t.Fatalf("script output = %q, want bash", strings.TrimSpace(string(data)))
 	}
 }
 
-func TestRunEvaluatesSetupWhenCondition(t *testing.T) {
+func TestRunSetsSetupEnvironment(t *testing.T) {
 	repoRoot := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(repoRoot, "setup"), 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	setupFile := `
-when:
-  os: [linux]
-`
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.yaml"), []byte(setupFile), 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+	outputFile := filepath.Join(repoRoot, "env.txt")
+	script := "#!/bin/sh\nprintf '%s\\n%s\\n%s\\n' \"$DFL_ROOT\" \"$DOTF\" \"$DFL_DRY_RUN\" > \"" + outputFile + "\"\n"
+	if err := os.WriteFile(filepath.Join(repoRoot, "setup"), []byte(script), 0o755); err != nil {
+		t.Fatalf("WriteFile setup: %v", err)
 	}
 
-	var stdout bytes.Buffer
-	runner := Runner{Stdout: &stdout, ComponentInstaller: &fakeComponentInstaller{}, PackageInstaller: fakePackageInstaller{}, RepoSyncer: fakeRepoSyncer{}, StepExecutor: fakeStepExecutor{}}
-
-	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot, OS: runtimectx.OSMac}, Options{})
+	runner := Runner{}
+	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot, DryRun: true})
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
 	if code != 0 {
 		t.Fatalf("Run returned code %d, want 0", code)
 	}
-	if !strings.Contains(stdout.String(), "setup does not apply to this machine") {
-		t.Fatalf("stdout = %q, want setup skip output", stdout.String())
-	}
-}
 
-func TestRunExecutesMatchingSetupStepsWithDryRun(t *testing.T) {
-	repoRoot := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(repoRoot, "setup"), 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	setupFile := `
-steps:
-  - name: cache
-    run: echo hello
-
-  - name: mac only
-    os: [mac]
-    run: echo mac
-`
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup", "default.yaml"), []byte(setupFile), 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
-	}
-
-	var stdout bytes.Buffer
-	steps := &trackingStepExecutor{}
-	runner := Runner{Stdout: &stdout, ComponentInstaller: &fakeComponentInstaller{}, PackageInstaller: fakePackageInstaller{}, RepoSyncer: fakeRepoSyncer{}, StepExecutor: steps}
-
-	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot, OS: runtimectx.OSLinux, DryRun: true}, Options{})
+	data, err := os.ReadFile(outputFile)
 	if err != nil {
-		t.Fatalf("Run returned error: %v", err)
+		t.Fatalf("ReadFile env.txt: %v", err)
 	}
-	if code != 0 {
-		t.Fatalf("Run returned code %d, want 0", code)
+
+	want := strings.Join([]string{repoRoot, repoRoot, "1", ""}, "\n")
+	if string(data) != want {
+		t.Fatalf("setup env output = %q, want %q", string(data), want)
 	}
-	if len(steps.steps) != 1 || steps.steps[0] != "cache" {
-		t.Fatalf("executed steps = %v, want [cache]", steps.steps)
-	}
-	if !strings.Contains(stdout.String(), "not applicable on this machine") {
-		t.Fatalf("stdout = %q, want skipped step output", stdout.String())
-	}
-}
-
-type fakePackageInstaller struct{}
-
-func (fakePackageInstaller) Install(runtimectx.Context, string, packagemgr.InstallOptions) (int, error) {
-	return 0, nil
-}
-
-type trackingPackageInstaller struct{ called bool }
-
-func (t *trackingPackageInstaller) Install(runtimectx.Context, string, packagemgr.InstallOptions) (int, error) {
-	t.called = true
-	return 0, nil
-}
-
-type fakeComponentInstaller struct{ names []string }
-
-func (f *fakeComponentInstaller) Install(_ runtimectx.Context, names []string) (int, error) {
-	f.names = append([]string(nil), names...)
-	return 0, nil
-}
-
-type fakeRepoSyncer struct{}
-
-func (fakeRepoSyncer) Sync(runtimectx.Context, manifest.RepoDefaults, manifest.RepoSpec) (runtimectx.ResultStatus, string, error) {
-	return runtimectx.StatusSuccess, "done", nil
-}
-
-type trackingRepoSyncer struct{ called bool }
-
-func (t *trackingRepoSyncer) Sync(runtimectx.Context, manifest.RepoDefaults, manifest.RepoSpec) (runtimectx.ResultStatus, string, error) {
-	t.called = true
-	return runtimectx.StatusSuccess, "done", nil
-}
-
-type fakeStepExecutor struct{}
-
-func (fakeStepExecutor) Execute(runtimectx.Context, string, manifest.StepSpec) (runtimectx.ResultStatus, string, error) {
-	return runtimectx.StatusSuccess, "done", nil
-}
-
-type trackingStepExecutor struct{ steps []string }
-
-func (t *trackingStepExecutor) Execute(_ runtimectx.Context, _ string, step manifest.StepSpec) (runtimectx.ResultStatus, string, error) {
-	t.steps = append(t.steps, step.Name)
-	return runtimectx.StatusSuccess, "done", nil
 }

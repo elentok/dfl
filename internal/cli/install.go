@@ -1,9 +1,6 @@
 package cli
 
 import (
-	"errors"
-	"fmt"
-
 	"dfl/internal/install"
 
 	"github.com/spf13/cobra"
@@ -23,10 +20,6 @@ func (a *App) newInstallCommand() *cobra.Command {
 
 			runner := install.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}
 			code, err := runner.Install(ctx, args)
-			if err != nil && errors.Is(err, install.ErrManifestInstallNotImplemented) {
-				fmt.Fprintln(a.stderrWriter(), err)
-				return exitError{code: 1}
-			}
 			if err != nil {
 				return err
 			}

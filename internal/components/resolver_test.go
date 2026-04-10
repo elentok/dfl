@@ -7,14 +7,14 @@ import (
 	"testing"
 )
 
-func TestResolvePrefersCoreManifestOverScript(t *testing.T) {
+func TestResolvePrefersCoreScriptDirectory(t *testing.T) {
 	repoRoot := t.TempDir()
 	componentRoot := filepath.Join(repoRoot, "core", "tmux")
 	if err := os.MkdirAll(componentRoot, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
-	writeFile(t, filepath.Join(componentRoot, "install"), "#!/usr/bin/env bash\n")
-	writeFile(t, filepath.Join(componentRoot, "install.yaml"), "name: tmux\n")
+	entrypoint := filepath.Join(componentRoot, "install")
+	writeFile(t, entrypoint, "#!/usr/bin/env bash\n")
 
 	component, err := Resolve(repoRoot, "tmux")
 	if err != nil {
@@ -23,8 +23,11 @@ func TestResolvePrefersCoreManifestOverScript(t *testing.T) {
 	if component.Kind != KindCore {
 		t.Fatalf("Kind = %q, want %q", component.Kind, KindCore)
 	}
-	if component.InstallerType != InstallerManifest {
-		t.Fatalf("InstallerType = %q, want %q", component.InstallerType, InstallerManifest)
+	if component.InstallerType != InstallerScript {
+		t.Fatalf("InstallerType = %q, want %q", component.InstallerType, InstallerScript)
+	}
+	if component.Entrypoint != entrypoint {
+		t.Fatalf("Entrypoint = %q, want %q", component.Entrypoint, entrypoint)
 	}
 }
 

@@ -12,8 +12,6 @@ import (
 	"dfl/internal/ui"
 )
 
-var ErrManifestInstallNotImplemented = errors.New("manifest install is not implemented yet")
-
 type Runner struct {
 	Stdout io.Writer
 	Stderr io.Writer
@@ -74,14 +72,10 @@ func (r Runner) Install(ctx runtimectx.Context, names []string) (int, error) {
 }
 
 func (r Runner) installComponent(ctx runtimectx.Context, component components.Component) error {
-	switch component.InstallerType {
-	case components.InstallerScript:
-		return r.runScript(ctx, component)
-	case components.InstallerManifest:
-		return ErrManifestInstallNotImplemented
-	default:
+	if component.InstallerType != components.InstallerScript {
 		return fmt.Errorf("unsupported installer type %q", component.InstallerType)
 	}
+	return r.runScript(ctx, component)
 }
 
 func (r Runner) runScript(ctx runtimectx.Context, component components.Component) error {
