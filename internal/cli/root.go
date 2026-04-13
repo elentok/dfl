@@ -21,7 +21,6 @@ func (a *App) newRootCommand() *cobra.Command {
 	cmd.AddCommand(
 		a.newSetupCommand(),
 		a.newInstallCommand(),
-		a.newSelfCommand(),
 		a.newUpdateCommand(),
 		a.newPkgCommand(),
 		a.newOSCommand(),
