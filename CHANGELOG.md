@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.0] - 2026-04-13
+
+### Added
+
+- Added `dfl update` to self-update the binary, update the target dotfiles repo, and rerun setup.
+- Added `--repo` support to `dfl setup` for explicit bootstrap handoff and targeted repo execution.
+- Added the public `install-dfl.sh` bootstrap installer shim.
+
+### Changed
+
+- `dfl setup` now runs `core/setup` from the resolved repo root and exports `DFL_COMPONENT_ROOT=<repo>/core`.
+- The root `bootstrap` flow now installs `dfl` only when needed and then delegates to `dfl setup --repo <repo>`.
+- Setup and component install scripts now get the `dfl` executable prepended to `PATH`, which keeps nested runtime command lookups stable.
+- `dfl update --dry-run` now reports the planned setup step without requiring a preinstalled target binary.
+
 ## [0.1.0] - 2026-04-11
 
 ### Added
