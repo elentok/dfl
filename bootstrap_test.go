@@ -40,9 +40,6 @@ func TestBootstrapInstallsDFLAndRunsSetup(t *testing.T) {
 	fakeDFL := filepath.Join(releaseDir, "dfl")
 	setupMarker := filepath.Join(fixtures, "setup-ran")
 	writeExecutable(t, fakeDFL, fmt.Sprintf(`#!/bin/sh
-if [ "$1" = "self" ] && [ "$2" = "install" ]; then
-  exit 0
-fi
 if [ "$1" = "setup" ]; then
   touch %s
   exit 0
@@ -78,7 +75,7 @@ esac
 	cmd := exec.Command("sh", "/Users/david/dev/dfl/bootstrap")
 	cmd.Env = append(os.Environ(),
 		"HOME="+home,
-		"PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"PATH="+binDir+string(os.PathListSeparator)+"/usr/bin:/bin:/usr/sbin:/sbin",
 	)
 	cmd.Dir = repoRoot
 	output, err := cmd.CombinedOutput()

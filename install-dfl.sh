@@ -34,14 +34,11 @@ download() {
 }
 
 mkdir -p "$bin"
-if [ ! -x "$target" ]; then
-  download || {
-    echo "failed to download $url" >&2
-    exit 1
-  }
-  tar -xzf "$archive" -C "$tmp" dfl
-  install -m 755 "$tmp/dfl" "$target"
-fi
+download || {
+  echo "failed to download $url" >&2
+  exit 1
+}
+tar -xzf "$archive" -C "$tmp" dfl
+install -m 755 "$tmp/dfl" "$target"
 
 export PATH="$bin:$PATH"
-exec "$target" self install "$@"

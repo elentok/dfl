@@ -55,17 +55,17 @@ func (u Updater) Run(repoOverride string) (int, error) {
 		return 1, err
 	}
 
-	setupBinary, err := setupBinaryPath(installedPath)
-	if err != nil {
-		return 1, err
-	}
-
 	err = ui.Step(u.stdout(), "Running dotfiles setup", func() (runtimectx.ResultStatus, string, error) {
-		args := []string{"setup", "--repo", repoRoot}
 		if u.DryRun {
-			args = append(args, "--dry-run")
+			return runtimectx.StatusSuccess, fmt.Sprintf("would run dfl setup --repo %s --dry-run", repoRoot), nil
 		}
 
+		setupBinary, err := setupBinaryPath(installedPath)
+		if err != nil {
+			return "", "", err
+		}
+
+		args := []string{"setup", "--repo", repoRoot}
 		cmd := exec.Command(setupBinary, args...)
 		cmd.Stdout = u.stdout()
 		cmd.Stderr = u.stderr()
@@ -73,9 +73,6 @@ func (u Updater) Run(repoOverride string) (int, error) {
 			return "", "", err
 		}
 
-		if u.DryRun {
-			return runtimectx.StatusSuccess, fmt.Sprintf("would run %s setup --repo %s", setupBinary, repoRoot), nil
-		}
 		return runtimectx.StatusSuccess, fmt.Sprintf("ran setup for %s", repoRoot), nil
 	})
 	if err != nil {

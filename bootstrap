@@ -3,5 +3,8 @@ set -eu
 
 repo_root="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 
-sh "$repo_root/install-dfl.sh"
+if ! command -v dfl >/dev/null 2>&1; then
+  sh "$repo_root/install-dfl.sh"
+fi
+
 PATH="$HOME/.local/bin:$PATH" exec dfl setup --repo "$repo_root"
