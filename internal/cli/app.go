@@ -80,7 +80,11 @@ func (a *App) runPlaceholder(name string, args []string) error {
 }
 
 func (a *App) runtimeContext() (runtime.Context, error) {
-	ctx, err := runtime.NewContext("")
+	return a.runtimeContextAt("")
+}
+
+func (a *App) runtimeContextAt(startDir string) (runtime.Context, error) {
+	ctx, err := runtime.NewContext(startDir)
 	if err != nil {
 		return runtime.Context{}, err
 	}

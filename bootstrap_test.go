@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,9 +11,11 @@ import (
 )
 
 func TestBootstrapScriptSyntax(t *testing.T) {
-	cmd := exec.Command("sh", "-n", "bootstrap")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("sh -n bootstrap failed: %v\n%s", err, string(output))
+	for _, script := range []string{"bootstrap", "install-dfl.sh"} {
+		cmd := exec.Command("sh", "-n", script)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("sh -n %s failed: %v\n%s", script, err, string(output))
+		}
 	}
 }
 
@@ -21,6 +24,8 @@ func TestBootstrapInstallsDFLAndRunsSetup(t *testing.T) {
 	fixtures := t.TempDir()
 	binDir := filepath.Join(fixtures, "bin")
 	releaseDir := filepath.Join(fixtures, "release")
+	repoRoot := t.TempDir()
+	repoCore := filepath.Join(repoRoot, "core")
 
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll binDir: %v", err)
@@ -28,10 +33,23 @@ func TestBootstrapInstallsDFLAndRunsSetup(t *testing.T) {
 	if err := os.MkdirAll(releaseDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll releaseDir: %v", err)
 	}
+	if err := os.MkdirAll(repoCore, 0o755); err != nil {
+		t.Fatalf("MkdirAll repo core: %v", err)
+	}
 
 	fakeDFL := filepath.Join(releaseDir, "dfl")
 	setupMarker := filepath.Join(fixtures, "setup-ran")
-	writeExecutable(t, fakeDFL, "#!/bin/sh\n[ \"$*\" = \"setup\" ] || { echo \"unexpected dfl args: $*\" >&2; exit 1; }\ntouch "+shellQuote(setupMarker)+"\n")
+	writeExecutable(t, fakeDFL, fmt.Sprintf(`#!/bin/sh
+if [ "$1" = "self" ] && [ "$2" = "install" ]; then
+  exit 0
+fi
+if [ "$1" = "setup" ]; then
+  touch %s
+  exit 0
+fi
+echo "unexpected dfl args: $*" >&2
+exit 1
+`, shellQuote(setupMarker)))
 
 	assetName := "dfl_" + bootstrapOS() + "_" + bootstrapArch(t) + ".tar.gz"
 	run(t, releaseDir, "tar", "-czf", filepath.Join(releaseDir, assetName), "dfl")
@@ -40,16 +58,29 @@ func TestBootstrapInstallsDFLAndRunsSetup(t *testing.T) {
 	}
 
 	archivePath := shellQuote(filepath.Join(releaseDir, assetName))
-	curl := "#!/bin/sh\ncase \"$*\" in\n  *" + assetName + "*) cp " + archivePath + " \"$4\" ;;\n  *) echo \"unexpected curl args: $*\" >&2; exit 1 ;;\nesac\n"
-	wget := "#!/bin/sh\ncase \"$*\" in\n  *" + assetName + "*) cp " + archivePath + " \"$2\" ;;\n  *) echo \"unexpected wget args: $*\" >&2; exit 1 ;;\nesac\n"
+	curl := fmt.Sprintf(`#!/bin/sh
+case "$*" in
+  *%s*) cp %s "$4" ;;
+  *) echo "unexpected curl args: $*" >&2; exit 1 ;;
+esac
+`, assetName, archivePath)
+	wget := fmt.Sprintf(`#!/bin/sh
+case "$*" in
+  *%s*) cp %s "$2" ;;
+  *) echo "unexpected wget args: $*" >&2; exit 1 ;;
+esac
+`, assetName, archivePath)
 	writeExecutable(t, filepath.Join(binDir, "curl"), curl)
 	writeExecutable(t, filepath.Join(binDir, "wget"), wget)
 
-	cmd := exec.Command("sh", "./bootstrap")
+	writeExecutable(t, filepath.Join(repoCore, "setup"), "#!/bin/sh\nexit 0\n")
+
+	cmd := exec.Command("sh", "/Users/david/dev/dfl/bootstrap")
 	cmd.Env = append(os.Environ(),
 		"HOME="+home,
 		"PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"),
 	)
+	cmd.Dir = repoRoot
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("bootstrap failed: %v\n%s", err, strings.TrimSpace(string(output)))

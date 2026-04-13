@@ -2,6 +2,7 @@ package install
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +19,7 @@ func TestInstallRunsScriptWithExpectedEnvironment(t *testing.T) {
 	}
 
 	outputFile := filepath.Join(repoRoot, "env.txt")
-	script := "#!/usr/bin/env bash\nset -euo pipefail\nprintf '%s\n%s\n%s\n' \"$DFL_ROOT\" \"$DFL_COMPONENT_ROOT\" \"$DOTF\" > \"" + outputFile + "\"\n"
+	script := fmt.Sprintf("#!/usr/bin/env bash\nset -euo pipefail\nprintf '%%s\\n%%s\\n%%s\\n%%s\\n' \"$DFL_ROOT\" \"$DFL_COMPONENT_ROOT\" \"$DOTF\" \"$PATH\" > %q\n", outputFile)
 	if err := os.WriteFile(filepath.Join(componentRoot, "install"), []byte(script), 0o755); err != nil {
 		t.Fatalf("WriteFile install: %v", err)
 	}
@@ -43,9 +44,21 @@ func TestInstallRunsScriptWithExpectedEnvironment(t *testing.T) {
 		t.Fatalf("ReadFile env output: %v", err)
 	}
 
-	want := strings.Join([]string{repoRoot, componentRoot, repoRoot, ""}, "\n")
-	if string(data) != want {
-		t.Fatalf("script env output = %q, want %q", string(data), want)
+	parts := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	if len(parts) != 4 {
+		t.Fatalf("env output lines = %d, want 4", len(parts))
+	}
+	if parts[0] != repoRoot || parts[1] != componentRoot || parts[2] != repoRoot {
+		t.Fatalf("script env output = %q, want repo/component roots", parts[:3])
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatalf("os.Executable: %v", err)
+	}
+	exeDir := filepath.Dir(exe)
+	if !strings.HasPrefix(parts[3], exeDir+string(os.PathListSeparator)) && parts[3] != exeDir {
+		t.Fatalf("PATH = %q, want it to start with %q", parts[3], exeDir)
 	}
 }
 

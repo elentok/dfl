@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runtimecmd"
 )
 
 type Runner struct {
@@ -15,7 +16,7 @@ type Runner struct {
 }
 
 func (r Runner) Run(ctx runtimectx.Context) (int, error) {
-	setupPath := filepath.Join(ctx.RepoRoot, "setup")
+	setupPath := filepath.Join(ctx.RepoRoot, "core", "setup")
 	cmd := exec.Command(setupPath)
 	cmd.Dir = ctx.RepoRoot
 	cmd.Stdout = r.stdout()
@@ -29,8 +30,9 @@ func (r Runner) Run(ctx runtimectx.Context) (int, error) {
 }
 
 func setupEnv(ctx runtimectx.Context) []string {
-	env := os.Environ()
+	env := runtimecmd.WithExecutableOnPath(os.Environ())
 	env = append(env, "DFL_ROOT="+ctx.RepoRoot)
+	env = append(env, "DFL_COMPONENT_ROOT="+filepath.Join(ctx.RepoRoot, "core"))
 	env = append(env, "DOTF="+ctx.RepoRoot)
 	if ctx.DryRun {
 		env = append(env, "DFL_DRY_RUN=1")
@@ -39,15 +41,16 @@ func setupEnv(ctx runtimectx.Context) []string {
 }
 
 func (r Runner) stdout() io.Writer {
-	if r.Stdout != nil {
-		return r.Stdout
-	}
-	return io.Discard
+	return writerOrDiscard(r.Stdout)
 }
 
 func (r Runner) stderr() io.Writer {
-	if r.Stderr != nil {
-		return r.Stderr
+	return writerOrDiscard(r.Stderr)
+}
+
+func writerOrDiscard(w io.Writer) io.Writer {
+	if w != nil {
+		return w
 	}
 	return io.Discard
 }

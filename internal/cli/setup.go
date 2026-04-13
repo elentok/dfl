@@ -7,7 +7,9 @@ import (
 )
 
 func (a *App) newSetupCommand() *cobra.Command {
-	return &cobra.Command{
+	var repo string
+
+	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Run the repo setup script",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -15,7 +17,7 @@ func (a *App) newSetupCommand() *cobra.Command {
 				return cobra.ExactArgs(0)(cmd, args)
 			}
 
-			ctx, err := a.runtimeContext()
+			ctx, err := a.runtimeContextAt(repo)
 			if err != nil {
 				return err
 			}
@@ -31,4 +33,7 @@ func (a *App) newSetupCommand() *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVar(&repo, "repo", "", "Run setup for this repo root")
+	return cmd
 }

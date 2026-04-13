@@ -9,6 +9,7 @@ import (
 
 	"dfl/internal/components"
 	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runtimecmd"
 	"dfl/internal/ui"
 )
 
@@ -88,7 +89,7 @@ func (r Runner) runScript(ctx runtimectx.Context, component components.Component
 }
 
 func scriptEnv(ctx runtimectx.Context, component components.Component) []string {
-	env := os.Environ()
+	env := runtimecmd.WithExecutableOnPath(os.Environ())
 	env = append(env, "DFL_ROOT="+ctx.RepoRoot)
 	env = append(env, "DFL_COMPONENT_ROOT="+component.Root)
 	env = append(env, "DOTF="+ctx.RepoRoot)

@@ -2,6 +2,7 @@ package setup
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,9 +13,12 @@ import (
 
 func TestRunExecutesRepoSetupScriptFromRepoRoot(t *testing.T) {
 	repoRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repoRoot, "core"), 0o755); err != nil {
+		t.Fatalf("MkdirAll core: %v", err)
+	}
 	marker := filepath.Join(repoRoot, "setup-ran")
-	script := "#!/bin/sh\npwd > pwd.txt\ntouch \"" + marker + "\"\n"
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup"), []byte(script), 0o755); err != nil {
+	script := fmt.Sprintf("#!/bin/sh\npwd > pwd.txt\ntouch %q\n", marker)
+	if err := os.WriteFile(filepath.Join(repoRoot, "core", "setup"), []byte(script), 0o755); err != nil {
 		t.Fatalf("WriteFile setup: %v", err)
 	}
 
@@ -56,9 +60,12 @@ func TestRunExecutesRepoSetupScriptFromRepoRoot(t *testing.T) {
 
 func TestRunRespectsSetupShebang(t *testing.T) {
 	repoRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repoRoot, "core"), 0o755); err != nil {
+		t.Fatalf("MkdirAll core: %v", err)
+	}
 	outputFile := filepath.Join(repoRoot, "bash.txt")
-	script := "#!/usr/bin/env bash\nfunction hello-world() {\n  echo bash > \"" + outputFile + "\"\n}\nhello-world\n"
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup"), []byte(script), 0o755); err != nil {
+	script := fmt.Sprintf("#!/usr/bin/env bash\nfunction hello-world() {\n  echo bash > %q\n}\nhello-world\n", outputFile)
+	if err := os.WriteFile(filepath.Join(repoRoot, "core", "setup"), []byte(script), 0o755); err != nil {
 		t.Fatalf("WriteFile setup: %v", err)
 	}
 
@@ -82,9 +89,12 @@ func TestRunRespectsSetupShebang(t *testing.T) {
 
 func TestRunSetsSetupEnvironment(t *testing.T) {
 	repoRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repoRoot, "core"), 0o755); err != nil {
+		t.Fatalf("MkdirAll core: %v", err)
+	}
 	outputFile := filepath.Join(repoRoot, "env.txt")
-	script := "#!/bin/sh\nprintf '%s\\n%s\\n%s\\n' \"$DFL_ROOT\" \"$DOTF\" \"$DFL_DRY_RUN\" > \"" + outputFile + "\"\n"
-	if err := os.WriteFile(filepath.Join(repoRoot, "setup"), []byte(script), 0o755); err != nil {
+	script := fmt.Sprintf("#!/bin/sh\nprintf '%%s\\n%%s\\n%%s\\n%%s\\n%%s\\n' \"$DFL_ROOT\" \"$DFL_COMPONENT_ROOT\" \"$DOTF\" \"$DFL_DRY_RUN\" \"$PATH\" > %q\n", outputFile)
+	if err := os.WriteFile(filepath.Join(repoRoot, "core", "setup"), []byte(script), 0o755); err != nil {
 		t.Fatalf("WriteFile setup: %v", err)
 	}
 
@@ -102,8 +112,20 @@ func TestRunSetsSetupEnvironment(t *testing.T) {
 		t.Fatalf("ReadFile env.txt: %v", err)
 	}
 
-	want := strings.Join([]string{repoRoot, repoRoot, "1", ""}, "\n")
-	if string(data) != want {
-		t.Fatalf("setup env output = %q, want %q", string(data), want)
+	parts := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	if len(parts) != 5 {
+		t.Fatalf("env output lines = %d, want 5", len(parts))
+	}
+	if parts[0] != repoRoot || parts[1] != filepath.Join(repoRoot, "core") || parts[2] != repoRoot || parts[3] != "1" {
+		t.Fatalf("unexpected setup env output: %q", parts[:4])
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatalf("os.Executable: %v", err)
+	}
+	exeDir := filepath.Dir(exe)
+	if !strings.HasPrefix(parts[4], exeDir+string(os.PathListSeparator)) && parts[4] != exeDir {
+		t.Fatalf("PATH = %q, want it to start with %q", parts[4], exeDir)
 	}
 }
