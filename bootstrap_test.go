@@ -70,9 +70,11 @@ esac
 	writeExecutable(t, filepath.Join(binDir, "curl"), curl)
 	writeExecutable(t, filepath.Join(binDir, "wget"), wget)
 
+	copyExecutable(t, "bootstrap", filepath.Join(repoRoot, "bootstrap"))
+	copyExecutable(t, "install-dfl.sh", filepath.Join(repoRoot, "install-dfl.sh"))
 	writeExecutable(t, filepath.Join(repoCore, "setup"), "#!/bin/sh\nexit 0\n")
 
-	cmd := exec.Command("sh", "/Users/david/dev/dfl/bootstrap")
+	cmd := exec.Command("sh", "./bootstrap")
 	cmd.Env = append(os.Environ(),
 		"HOME="+home,
 		"PATH="+binDir+string(os.PathListSeparator)+"/usr/bin:/bin:/usr/sbin:/sbin",
@@ -117,6 +119,18 @@ func writeExecutable(t *testing.T, path, contents string) {
 
 	if err := os.WriteFile(path, []byte(contents), 0o755); err != nil {
 		t.Fatalf("WriteFile %s: %v", path, err)
+	}
+}
+
+func copyExecutable(t *testing.T, src, dst string) {
+	t.Helper()
+
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("ReadFile %s: %v", src, err)
+	}
+	if err := os.WriteFile(dst, data, 0o755); err != nil {
+		t.Fatalf("WriteFile %s: %v", dst, err)
 	}
 }
 
