@@ -45,18 +45,15 @@ func TestDownloadBinaryURLUsesRepositoryAndBinaryName(t *testing.T) {
 	}
 }
 
-func TestGitHubInstallDownloadsAndValidatesBinary(t *testing.T) {
+func TestGitHubInstallCreatesVersionedBinaryAndSymlink(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("shell script test binary is Unix-only")
+		t.Skip("symlink tests are Unix-only in this repo")
 	}
 
-	archive := makeArchive(t, "dfl", "#!/bin/sh\necho v9.9.9\n")
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(archive)
-	}))
+	server := newGitHubReleaseServer(t, "dfl", map[string]string{"v9.9.9": "#!/bin/sh\necho installed\n"}, "v9.9.9")
 	defer server.Close()
 
-	target := filepath.Join(t.TempDir(), "bin", "dfl")
+	linkPath := filepath.Join(t.TempDir(), "bin", "dfl")
 	installer := GitHubInstaller{
 		Client:         server.Client(),
 		Repository:     "elentok/dfl",
@@ -67,32 +64,60 @@ func TestGitHubInstallDownloadsAndValidatesBinary(t *testing.T) {
 		PathEnv:        os.Getenv("PATH"),
 	}
 
-	result, err := installer.Install("v9.9.9", target)
+	result, err := installer.Install("v9.9.9", linkPath)
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
 	if result.Status != runtimectx.StatusSuccess {
 		t.Fatalf("Status = %q, want success", result.Status)
 	}
+	if result.Path != linkPath {
+		t.Fatalf("Path = %q, want %q", result.Path, linkPath)
+	}
 	if result.Version != "v9.9.9" {
 		t.Fatalf("Version = %q, want v9.9.9", result.Version)
 	}
-	if _, err := os.Stat(target); err != nil {
-		t.Fatalf("installed binary missing: %v", err)
+
+	versionedPath := managedBinaryPath(linkPath, "v9.9.9")
+	if _, err := os.Stat(versionedPath); err != nil {
+		t.Fatalf("versioned binary missing: %v", err)
+	}
+
+	info, err := os.Lstat(linkPath)
+	if err != nil {
+		t.Fatalf("Lstat link: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("%s is not a symlink", linkPath)
+	}
+
+	target, err := os.Readlink(linkPath)
+	if err != nil {
+		t.Fatalf("Readlink: %v", err)
+	}
+	if filepath.Base(target) != "dfl-v9.9.9" {
+		t.Fatalf("symlink target = %q, want basename dfl-v9.9.9", target)
 	}
 }
 
 func TestGitHubInstallSkipsWhenRequestedVersionAlreadyInstalled(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("shell script test binary is Unix-only")
+		t.Skip("symlink tests are Unix-only in this repo")
 	}
 
-	target := filepath.Join(t.TempDir(), "dfl")
-	if err := os.WriteFile(target, []byte("#!/bin/sh\necho v1.2.3\n"), 0o755); err != nil {
-		t.Fatalf("WriteFile target: %v", err)
+	linkPath := filepath.Join(t.TempDir(), "bin", "dfl")
+	versionedPath := managedBinaryPath(linkPath, "v1.2.3")
+	if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(versionedPath, []byte("binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile versioned target: %v", err)
+	}
+	if err := os.Symlink(filepath.Base(versionedPath), linkPath); err != nil {
+		t.Fatalf("Symlink: %v", err)
 	}
 
-	result, err := (GitHubInstaller{Repository: "elentok/dfl", BinaryName: "dfl"}).Install("v1.2.3", target)
+	result, err := (GitHubInstaller{Repository: "elentok/dfl", BinaryName: "dfl"}).Install("v1.2.3", linkPath)
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
@@ -106,29 +131,30 @@ func TestGitHubInstallSkipsWhenRequestedVersionAlreadyInstalled(t *testing.T) {
 
 func TestGitHubInstallSkipsWhenLatestVersionAlreadyInstalled(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("shell script test binary is Unix-only")
+		t.Skip("symlink tests are Unix-only in this repo")
 	}
 
-	target := filepath.Join(t.TempDir(), "dfl")
-	if err := os.WriteFile(target, []byte("#!/bin/sh\necho v1.2.3\n"), 0o755); err != nil {
-		t.Fatalf("WriteFile target: %v", err)
-	}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/latest" {
-			http.Redirect(w, r, "/tag/v1.2.3", http.StatusFound)
-			return
-		}
-		http.NotFound(w, r)
-	}))
+	server := newGitHubReleaseServer(t, "dfl", map[string]string{"v1.2.3": "#!/bin/sh\necho installed\n"}, "v1.2.3")
 	defer server.Close()
+
+	linkPath := filepath.Join(t.TempDir(), "bin", "dfl")
+	versionedPath := managedBinaryPath(linkPath, "v1.2.3")
+	if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(versionedPath, []byte("binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile versioned target: %v", err)
+	}
+	if err := os.Symlink(filepath.Base(versionedPath), linkPath); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
 
 	result, err := (GitHubInstaller{
 		Client:         server.Client(),
 		Repository:     "elentok/dfl",
 		BinaryName:     "dfl",
 		ReleaseBaseURL: server.URL,
-	}).Install("", target)
+	}).Install("", linkPath)
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
@@ -140,45 +166,121 @@ func TestGitHubInstallSkipsWhenLatestVersionAlreadyInstalled(t *testing.T) {
 	}
 }
 
-func TestGitHubInstallGenericBinaryWithoutVersionCommand(t *testing.T) {
+func TestGitHubInstallReplacesPlainFileWithManagedSymlink(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("shell script test binary is Unix-only")
+		t.Skip("symlink tests are Unix-only in this repo")
 	}
 
-	archive := makeArchive(t, "colr", "#!/bin/sh\necho installed\n")
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(archive)
-	}))
+	server := newGitHubReleaseServer(t, "colr", map[string]string{"v2.0.0": "#!/bin/sh\necho installed\n"}, "v2.0.0")
 	defer server.Close()
 
-	target := filepath.Join(t.TempDir(), "bin", "colr")
-	installer := GitHubInstaller{
+	linkPath := filepath.Join(t.TempDir(), "bin", "colr")
+	if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(linkPath, []byte("old"), 0o755); err != nil {
+		t.Fatalf("WriteFile plain file: %v", err)
+	}
+
+	result, err := (GitHubInstaller{
 		Client:         server.Client(),
 		Repository:     "elentok/colr",
 		BinaryName:     "colr",
-		VersionArgs:    []string{},
 		ReleaseBaseURL: server.URL,
-		GOOS:           runtime.GOOS,
-		GOARCH:         runtime.GOARCH,
-		PathEnv:        os.Getenv("PATH"),
-	}
-
-	result, err := installer.Install("", target)
+	}).Install("", linkPath)
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
 	if result.Status != runtimectx.StatusSuccess {
 		t.Fatalf("Status = %q, want success", result.Status)
 	}
-	if result.Version != "" {
-		t.Fatalf("Version = %q, want empty", result.Version)
+
+	info, err := os.Lstat(linkPath)
+	if err != nil {
+		t.Fatalf("Lstat link: %v", err)
 	}
-	if !strings.Contains(result.Message, "installed colr to "+target) {
-		t.Fatalf("Message = %q, want generic install output", result.Message)
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("%s is not a symlink after install", linkPath)
 	}
-	if _, err := os.Stat(target); err != nil {
-		t.Fatalf("installed binary missing: %v", err)
+	if _, err := os.Stat(managedBinaryPath(linkPath, "v2.0.0")); err != nil {
+		t.Fatalf("managed binary missing: %v", err)
 	}
+}
+
+func TestGitHubInstallPrunesOlderManagedVersions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests are Unix-only in this repo")
+	}
+
+	server := newGitHubReleaseServer(t, "gx", map[string]string{
+		"v1.0.0": "#!/bin/sh\necho v1.0.0\n",
+		"v1.1.0": "#!/bin/sh\necho v1.1.0\n",
+		"v1.2.0": "#!/bin/sh\necho v1.2.0\n",
+		"v1.3.0": "#!/bin/sh\necho v1.3.0\n",
+	}, "v1.3.0")
+	defer server.Close()
+
+	linkPath := filepath.Join(t.TempDir(), "bin", "gx")
+	installer := GitHubInstaller{
+		Client:         server.Client(),
+		Repository:     "elentok/gx",
+		BinaryName:     "gx",
+		ReleaseBaseURL: server.URL,
+	}
+
+	for _, version := range []string{"v1.0.0", "v1.1.0", "v1.2.0", "v1.3.0"} {
+		if _, err := installer.Install(version, linkPath); err != nil {
+			t.Fatalf("Install %s returned error: %v", version, err)
+		}
+	}
+
+	for _, version := range []string{"v1.1.0", "v1.2.0", "v1.3.0"} {
+		if _, err := os.Stat(managedBinaryPath(linkPath, version)); err != nil {
+			t.Fatalf("expected %s to remain: %v", version, err)
+		}
+	}
+	if _, err := os.Stat(managedBinaryPath(linkPath, "v1.0.0")); !os.IsNotExist(err) {
+		t.Fatalf("expected oldest version to be pruned, err=%v", err)
+	}
+
+	target, err := os.Readlink(linkPath)
+	if err != nil {
+		t.Fatalf("Readlink: %v", err)
+	}
+	if filepath.Base(target) != "gx-v1.3.0" {
+		t.Fatalf("symlink target = %q, want basename gx-v1.3.0", target)
+	}
+}
+
+func newGitHubReleaseServer(t *testing.T, binaryName string, versions map[string]string, latest string) *httptest.Server {
+	t.Helper()
+
+	archives := map[string][]byte{}
+	for version, contents := range versions {
+		archives[version] = makeArchive(t, binaryName, contents)
+	}
+
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/latest":
+			http.Redirect(w, r, "/tag/"+latest, http.StatusFound)
+		case strings.HasPrefix(r.URL.Path, "/download/"):
+			parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+			if len(parts) < 3 {
+				http.NotFound(w, r)
+				return
+			}
+			version := parts[1]
+			archive, ok := archives[version]
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			_, _ = w.Write(archive)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
 }
 
 func makeArchive(t *testing.T, binaryName, contents string) []byte {

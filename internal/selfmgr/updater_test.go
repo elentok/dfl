@@ -24,7 +24,7 @@ func TestUpdateDryRunDoesNotRequireInstalledBinary(t *testing.T) {
 	}
 
 	output := stdout.String()
-	if !strings.Contains(output, "would install dfl latest release to") && !strings.Contains(output, "latest version already installed") {
+	if !strings.Contains(output, "would install dfl ") && !strings.Contains(output, "latest version already installed") {
 		t.Fatalf("stdout = %q, want dry-run install output or latest-version skip output", output)
 	}
 	if !strings.Contains(output, "would update "+repoRoot) {
