@@ -18,7 +18,7 @@ type Updater struct {
 }
 
 func (u Updater) Run(repoOverride string) (int, error) {
-	installer := Installer{Stdout: u.stdout(), DryRun: u.DryRun}
+	installer := Installer{DryRun: u.DryRun}
 
 	var installedPath string
 	err := ui.Step(u.stdout(), "Installing dfl", func() (runtimectx.ResultStatus, string, error) {

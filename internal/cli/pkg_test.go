@@ -43,3 +43,51 @@ func TestRunPkgSnapInstallDryRunPrintsPlan(t *testing.T) {
 		t.Fatalf("stdout = %q, want snap dry-run output", stdout.String())
 	}
 }
+
+func TestRunPkgGitHubInstallDryRunPrintsPlan(t *testing.T) {
+	app := NewApp()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	app.SetStdout(&stdout)
+	app.SetStderr(&stderr)
+
+	code, err := app.Run([]string{"--dry-run", "pkg", "github", "install", "elentok/colr", "elentok/blf"})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("Run returned code %d, want 0", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "Installing GitHub package elentok/colr") {
+		t.Fatalf("stdout = %q, want colr step header", output)
+	}
+	if !strings.Contains(output, "would install colr latest release to") {
+		t.Fatalf("stdout = %q, want colr dry-run output", output)
+	}
+	if !strings.Contains(output, "would install blf latest release to") {
+		t.Fatalf("stdout = %q, want blf dry-run output", output)
+	}
+}
+
+func TestRunPkgGitHubInstallRejectsURLForm(t *testing.T) {
+	app := NewApp()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	app.SetStdout(&stdout)
+	app.SetStderr(&stderr)
+
+	code, err := app.Run([]string{"pkg", "github", "install", "github.com/elentok/colr"})
+	if err == nil {
+		t.Fatalf("Run returned nil error, want validation error")
+	}
+	if code != 1 {
+		t.Fatalf("Run returned code %d, want 1", code)
+	}
+	if !strings.Contains(err.Error(), `expected owner/repo`) {
+		t.Fatalf("err = %q, want owner/repo guidance", err)
+	}
+}
