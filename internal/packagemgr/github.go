@@ -45,14 +45,26 @@ func (i GitHubInstaller) Install(version, target string) (GitHubInstallResult, e
 		return GitHubInstallResult{}, err
 	}
 
-	if version != "" && i.supportsInstalledVersion() {
-		if current, err := i.installedVersion(resolvedTarget); err == nil && versionsMatch(current, version) {
-			return GitHubInstallResult{
-				Status:  runtimectx.StatusSkipped,
-				Message: fmt.Sprintf("%s %s already installed at %s", binaryName, current, resolvedTarget),
-				Path:    resolvedTarget,
-				Version: current,
-			}, nil
+	if i.supportsInstalledVersion() {
+		if current, err := i.installedVersion(resolvedTarget); err == nil {
+			if version != "" && versionsMatch(current, version) {
+				return GitHubInstallResult{
+					Status:  runtimectx.StatusSkipped,
+					Message: fmt.Sprintf("%s %s already installed at %s", binaryName, current, resolvedTarget),
+					Path:    resolvedTarget,
+					Version: current,
+				}, nil
+			}
+			if version == "" {
+				if latest, err := i.latestVersion(); err == nil && versionsMatch(current, latest) {
+					return GitHubInstallResult{
+						Status:  runtimectx.StatusSkipped,
+						Message: "latest version already installed",
+						Path:    resolvedTarget,
+						Version: current,
+					}, nil
+				}
+			}
 		}
 	}
 
@@ -318,8 +330,45 @@ func (i GitHubInstaller) versionArgs() []string {
 	return []string{"version"}
 }
 
+func (i GitHubInstaller) latestVersion() (string, error) {
+	repository, err := i.repository()
+	if err != nil {
+		return "", err
+	}
+
+	base := i.ReleaseBaseURL
+	if base == "" {
+		base = releaseBaseURL(repository)
+	}
+	resp, err := i.httpClient().Get(strings.TrimRight(base, "/") + "/latest")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.Request == nil || resp.Request.URL == nil {
+		return "", fmt.Errorf("could not resolve latest release URL")
+	}
+
+	version := versionFromReleasePath(resp.Request.URL.Path)
+	if version == "" {
+		return "", fmt.Errorf("could not determine latest version from %q", resp.Request.URL.Path)
+	}
+	return version, nil
+}
+
 func releaseBaseURL(repository string) string {
 	return "https://github.com/" + strings.Trim(repository, "/") + "/releases"
+}
+
+func versionFromReleasePath(path string) string {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	for idx := 0; idx < len(parts)-1; idx++ {
+		if parts[idx] == "tag" || parts[idx] == "download" {
+			return parts[idx+1]
+		}
+	}
+	return ""
 }
 
 func versionsMatch(actual, requested string) bool {

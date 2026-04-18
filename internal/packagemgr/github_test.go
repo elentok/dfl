@@ -104,6 +104,42 @@ func TestGitHubInstallSkipsWhenRequestedVersionAlreadyInstalled(t *testing.T) {
 	}
 }
 
+func TestGitHubInstallSkipsWhenLatestVersionAlreadyInstalled(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script test binary is Unix-only")
+	}
+
+	target := filepath.Join(t.TempDir(), "dfl")
+	if err := os.WriteFile(target, []byte("#!/bin/sh\necho v1.2.3\n"), 0o755); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/latest" {
+			http.Redirect(w, r, "/tag/v1.2.3", http.StatusFound)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	result, err := (GitHubInstaller{
+		Client:         server.Client(),
+		Repository:     "elentok/dfl",
+		BinaryName:     "dfl",
+		ReleaseBaseURL: server.URL,
+	}).Install("", target)
+	if err != nil {
+		t.Fatalf("Install returned error: %v", err)
+	}
+	if result.Status != runtimectx.StatusSkipped {
+		t.Fatalf("Status = %q, want skipped", result.Status)
+	}
+	if result.Message != "latest version already installed" {
+		t.Fatalf("Message = %q, want exact latest-version skip message", result.Message)
+	}
+}
+
 func TestGitHubInstallGenericBinaryWithoutVersionCommand(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell script test binary is Unix-only")
