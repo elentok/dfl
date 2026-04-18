@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.2] - 2026-04-18
+
+- `dfl update` now offers to stash tracked local changes before pulling and restores the stash after a successful pull.
+
 ## [0.2.1] - 2026-04-18
 
 - Added `dfl pkg github install <owner/repo...>` for installing binaries from GitHub releases.
