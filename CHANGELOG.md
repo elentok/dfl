@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.1] - 2026-04-18
+
+- Added `dfl pkg github install <owner/repo...>` for installing binaries from GitHub releases.
+
 ## [0.2.0] - 2026-04-13
 
 ### Added

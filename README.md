@@ -6,6 +6,7 @@ It is designed to replace an ad hoc shell framework with a single binary that ca
 
 - run repo setup from a stable entrypoint
 - install named dotfiles components
+- install GitHub release binaries
 - provide reusable runtime commands for installer scripts
 - bootstrap from a minimal shell installer
 - self-update from GitHub releases
@@ -92,6 +93,7 @@ Examples:
 dfl has-command git
 dfl os is-mac
 dfl pkg brew install ripgrep
+dfl pkg github install elentok/gx elentok/colr
 dfl symlink tmux.conf ~/.tmux.conf
 dfl copy config.toml ~/.config/myapp/config.toml
 dfl mkdir ~/.config/myapp
@@ -100,6 +102,16 @@ dfl shell "Reload config" -- sh -c 'echo hello'
 ```
 
 These commands are designed to produce consistent step-style output and to support `--dry-run`.
+
+GitHub package installs use the repository basename as the binary name and install into
+`~/.local/bin`. For example:
+
+```sh
+dfl pkg github install elentok/gx
+```
+
+That installs the release binary to a versioned path like `~/.local/bin/gx-v1.2.3`, points
+`~/.local/bin/gx` at it via symlink, and keeps the newest three installed versions for rollback.
 
 ## Release Artifacts
 
@@ -137,4 +149,4 @@ The release pipeline injects the version string with GoReleaser using `-X dfl/in
 
 - `dfl setup` expects a dotfiles repo layout with a repo-specific `core/setup` entrypoint.
 - `dfl install` resolves components from the target repo and executes their `install` scripts.
-- The installer and updater converge on `~/.local/bin/dfl`.
+- GitHub-installed binaries use a managed `~/.local/bin/<binary>-<version>` plus `~/.local/bin/<binary>` symlink layout.
