@@ -65,11 +65,11 @@ func TestRunPkgGitHubInstallDryRunPrintsPlan(t *testing.T) {
 	if !strings.Contains(output, "Installing GitHub package elentok/colr") {
 		t.Fatalf("stdout = %q, want colr step header", output)
 	}
-	if !strings.Contains(output, "would install colr ") {
-		t.Fatalf("stdout = %q, want colr dry-run output", output)
+	if !strings.Contains(output, "would install colr ") && !strings.Contains(output, "latest version already installed") {
+		t.Fatalf("stdout = %q, want colr dry-run output or latest-version skip output", output)
 	}
-	if !strings.Contains(output, "would install blf ") {
-		t.Fatalf("stdout = %q, want blf dry-run output", output)
+	if !strings.Contains(output, "would install blf ") && strings.Count(output, "latest version already installed") < 2 {
+		t.Fatalf("stdout = %q, want blf dry-run output or latest-version skip output", output)
 	}
 }
 

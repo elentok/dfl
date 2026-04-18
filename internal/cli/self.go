@@ -15,6 +15,7 @@ func (a *App) newUpdateCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			updater := selfmgr.Updater{
+				Stdin:  a.stdinReader(),
 				Stdout: a.stdoutWriter(),
 				Stderr: a.stderrWriter(),
 				DryRun: a.dryRun,
