@@ -13,10 +13,12 @@ import (
 )
 
 const (
-	recordTypeStepStart   = "step_start"
-	recordTypeStepEnd     = "step_end"
-	recordTypeStepResult  = "step_result"
-	maxSummaryOutputLines = 80
+	summaryIndent             = "  "
+	recordTypeComponentHeader = "component_header"
+	recordTypeStepStart       = "step_start"
+	recordTypeStepEnd         = "step_end"
+	recordTypeStepResult      = "step_result"
+	maxSummaryOutputLines     = 80
 )
 
 type Record struct {
@@ -28,10 +30,21 @@ type Record struct {
 }
 
 type Step struct {
-	Text    string
-	Status  runtimectx.ResultStatus
-	Message string
-	Output  string
+	IsHeader bool
+	Text     string
+	Status   runtimectx.ResultStatus
+	Message  string
+	Output   string
+}
+
+func AppendComponentHeader(path, text string) error {
+	if path == "" || text == "" {
+		return nil
+	}
+	return appendRecord(path, Record{
+		Type: recordTypeComponentHeader,
+		Text: text,
+	})
 }
 
 func AppendStart(path, text string) error {
@@ -113,6 +126,14 @@ func Read(path string) ([]Step, error) {
 		}
 
 		switch record.Type {
+		case recordTypeComponentHeader:
+			if record.Text == "" {
+				continue
+			}
+			steps = append(steps, Step{
+				IsHeader: true,
+				Text:     record.Text,
+			})
 		case recordTypeStepStart:
 			if record.Text != "" {
 				stack = append(stack, record.Text)
@@ -161,12 +182,21 @@ func RenderSummary(w io.Writer, steps []Step) error {
 	}
 
 	failedCount := 0
+	stepCount := 0
 	for _, step := range steps {
+		if step.IsHeader {
+			if err := ui.StepStartWithIndent(w, step.Text, "", false); err != nil {
+				return err
+			}
+			continue
+		}
+
+		stepCount++
 		message := step.Message
 		if message == "" {
 			message = string(step.Status)
 		}
-		if err := ui.StepEnd(w, step.Status, fmt.Sprintf("%s... %s", step.Text, message)); err != nil {
+		if err := ui.StepEndWithIndent(w, step.Status, fmt.Sprintf("%s... %s", step.Text, message), summaryIndent); err != nil {
 			return err
 		}
 		if step.Status == runtimectx.StatusFailed && strings.TrimSpace(step.Output) != "" {
@@ -191,10 +221,10 @@ func RenderSummary(w io.Writer, steps []Step) error {
 		return err
 	}
 	if failedCount == 0 {
-		return ui.StepEnd(w, runtimectx.StatusSuccess, "dfl setup completed successfully")
+		return ui.StepEndWithIndent(w, runtimectx.StatusSuccess, "dfl setup completed successfully", "")
 	}
 
-	return ui.StepEnd(w, runtimectx.StatusFailed, fmt.Sprintf("dfl setup failed: %d of %d steps failed", failedCount, len(steps)))
+	return ui.StepEndWithIndent(w, runtimectx.StatusFailed, fmt.Sprintf("dfl setup failed: %d of %d steps failed", failedCount, stepCount), "")
 }
 
 func summarizeOutput(output string) []string {

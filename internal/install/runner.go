@@ -10,6 +10,7 @@ import (
 	"dfl/internal/components"
 	runtimectx "dfl/internal/runtime"
 	"dfl/internal/runtimecmd"
+	"dfl/internal/setuplog"
 	"dfl/internal/ui"
 )
 
@@ -47,9 +48,11 @@ func (r Runner) Install(ctx runtimectx.Context, names []string) (int, error) {
 			return 1, err
 		}
 
-		if err := ui.SectionHeader(stdout, fmt.Sprintf("Installing %s (%s/%s)", component.Name, component.Kind, component.InstallerType)); err != nil {
+		header := fmt.Sprintf("Installing %s (%s/%s)", component.Name, component.Kind, component.InstallerType)
+		if err := ui.SectionHeader(stdout, header); err != nil {
 			return 1, err
 		}
+		_ = setuplog.AppendComponentHeader(os.Getenv("DFL_LOG"), header)
 
 		if err := r.installComponent(ctx, component); err != nil {
 			if _, writeErr := fmt.Fprintln(stderr); writeErr != nil {

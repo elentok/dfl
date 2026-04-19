@@ -50,10 +50,30 @@ func TestReadIncludesAtomicStepResults(t *testing.T) {
 	}
 }
 
+func TestReadIncludesComponentHeaders(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "setup.jsonl")
+
+	if err := AppendComponentHeader(path, "Installing fish (core/script)"); err != nil {
+		t.Fatalf("AppendComponentHeader: %v", err)
+	}
+
+	steps, err := Read(path)
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if len(steps) != 1 {
+		t.Fatalf("len(steps) = %d, want 1", len(steps))
+	}
+	if !steps[0].IsHeader || steps[0].Text != "Installing fish (core/script)" {
+		t.Fatalf("step = %#v, want component header", steps[0])
+	}
+}
+
 func TestRenderSummaryIncludesFailedOutput(t *testing.T) {
 	var out bytes.Buffer
 
 	err := RenderSummary(&out, []Step{
+		{IsHeader: true, Text: "Installing fish (core/script)"},
 		{Text: "create directory X", Status: runtimectx.StatusSkipped, Message: "already exists"},
 		{Text: "git-clone this repo", Status: runtimectx.StatusFailed, Message: "failed", Output: "line 1\nline 2\n"},
 	})
@@ -68,10 +88,13 @@ func TestRenderSummaryIncludesFailedOutput(t *testing.T) {
 	if !strings.Contains(text, "Setup Summary \n\n") {
 		t.Fatalf("summary = %q, want blank line after header", text)
 	}
-	if !strings.Contains(text, "create directory X... already exists") {
+	if !strings.Contains(text, "◆ Installing fish (core/script)") {
+		t.Fatalf("summary = %q, want component header", text)
+	}
+	if !strings.Contains(text, "  ○ create directory X... already exists") {
 		t.Fatalf("summary = %q, want skipped step", text)
 	}
-	if !strings.Contains(text, "git-clone this repo... failed") {
+	if !strings.Contains(text, "  ✗ git-clone this repo... failed") {
 		t.Fatalf("summary = %q, want failed step", text)
 	}
 	if !strings.Contains(text, "    line 1") || !strings.Contains(text, "    line 2") {

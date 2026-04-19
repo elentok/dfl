@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	runtimectx "dfl/internal/runtime"
+	"dfl/internal/setuplog"
 )
 
 func TestInstallRunsScriptWithExpectedEnvironment(t *testing.T) {
@@ -76,5 +77,39 @@ func TestInstallReturnsErrorForMissingComponent(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), `✘ component "missing" not found`) {
 		t.Fatalf("stderr = %q, want missing component output", stderr.String())
+	}
+}
+
+func TestInstallLogsComponentHeader(t *testing.T) {
+	repoRoot := t.TempDir()
+	componentRoot := filepath.Join(repoRoot, "core", "fish")
+	if err := os.MkdirAll(componentRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(componentRoot, "install"), []byte("#!/usr/bin/env bash\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("WriteFile install: %v", err)
+	}
+
+	logPath := filepath.Join(t.TempDir(), "setup.jsonl")
+	t.Setenv("DFL_LOG", logPath)
+
+	runner := Runner{}
+	code, err := runner.Install(runtimectx.Context{RepoRoot: repoRoot}, []string{"fish"})
+	if err != nil {
+		t.Fatalf("Install returned error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("Install returned code %d, want 0", code)
+	}
+
+	steps, err := setuplog.Read(logPath)
+	if err != nil {
+		t.Fatalf("Read log: %v", err)
+	}
+	if len(steps) == 0 {
+		t.Fatal("steps is empty, want component header record")
+	}
+	if !steps[0].IsHeader || steps[0].Text != "Installing fish (core/script)" {
+		t.Fatalf("steps[0] = %#v, want first record to be component header", steps[0])
 	}
 }

@@ -31,6 +31,16 @@ func StepStart(w io.Writer, message string) error {
 	return err
 }
 
+func StepStartWithIndent(w io.Writer, message, indent string, leadingBlankLine bool) error {
+	line := indent + stepHeaderStyle.Render("◆ "+message)
+	if leadingBlankLine {
+		_, err := fmt.Fprintf(w, "\n%s\n", line)
+		return err
+	}
+	_, err := fmt.Fprintf(w, "%s\n", line)
+	return err
+}
+
 func StepEnd(w io.Writer, status runtimectx.ResultStatus, message string) error {
 	style, icon := statusStyle(status)
 	if message == "" {
@@ -39,6 +49,17 @@ func StepEnd(w io.Writer, status runtimectx.ResultStatus, message string) error 
 	}
 
 	_, err := fmt.Fprintf(w, "%s\n", style.Render(fmt.Sprintf("%s %s", icon, message)))
+	return err
+}
+
+func StepEndWithIndent(w io.Writer, status runtimectx.ResultStatus, message, indent string) error {
+	style, icon := statusStyle(status)
+	if message == "" {
+		_, err := fmt.Fprintf(w, "%s\n", indent+style.Render(fmt.Sprintf("%s %s", icon, status)))
+		return err
+	}
+
+	_, err := fmt.Fprintf(w, "%s\n", indent+style.Render(fmt.Sprintf("%s %s", icon, message)))
 	return err
 }
 

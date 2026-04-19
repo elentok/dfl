@@ -155,7 +155,7 @@ esac
 		t.Fatalf("WriteFile dfl shim: %v", err)
 	}
 
-	setupScript := fmt.Sprintf("#!/bin/sh\nPATH=%q:$PATH\nDFL_LOG=${DFL_LOG:?}\ndfl step start 'create directory X'\ndfl step success 'already exists'\nprintf '{\"type\":\"step_result\",\"text\":\"git-clone this repo\",\"status\":\"failed\",\"message\":\"failed\",\"output\":\"line 1\\\\nline 2\\\\n\"}\\n' >> \"$DFL_LOG\"\n", repoRoot)
+	setupScript := fmt.Sprintf("#!/bin/sh\nPATH=%q:$PATH\nDFL_LOG=${DFL_LOG:?}\nprintf '{\"type\":\"component_header\",\"text\":\"Installing fish (core/script)\"}\\n' >> \"$DFL_LOG\"\ndfl step start 'create directory X'\ndfl step success 'already exists'\nprintf '{\"type\":\"step_result\",\"text\":\"git-clone this repo\",\"status\":\"failed\",\"message\":\"failed\",\"output\":\"line 1\\\\nline 2\\\\n\"}\\n' >> \"$DFL_LOG\"\n", repoRoot)
 	if err := os.WriteFile(filepath.Join(coreDir, "setup"), []byte(setupScript), 0o755); err != nil {
 		t.Fatalf("WriteFile setup: %v", err)
 	}
@@ -178,10 +178,13 @@ esac
 	if !strings.Contains(output, "Setup Summary") {
 		t.Fatalf("stdout = %q, want setup summary", output)
 	}
-	if !strings.Contains(output, "create directory X... already exists") {
+	if !strings.Contains(output, "◆ Installing fish (core/script)") {
+		t.Fatalf("stdout = %q, want component header", output)
+	}
+	if !strings.Contains(output, "  ✓ create directory X... already exists") {
 		t.Fatalf("stdout = %q, want successful summary line", output)
 	}
-	if !strings.Contains(output, "git-clone this repo... failed") {
+	if !strings.Contains(output, "  ✗ git-clone this repo... failed") {
 		t.Fatalf("stdout = %q, want failed summary line", output)
 	}
 	if !strings.Contains(output, "    line 1") || !strings.Contains(output, "    line 2") {
