@@ -93,7 +93,7 @@ func TestRunSetsSetupEnvironment(t *testing.T) {
 		t.Fatalf("MkdirAll core: %v", err)
 	}
 	outputFile := filepath.Join(repoRoot, "env.txt")
-	script := fmt.Sprintf("#!/bin/sh\nprintf '%%s\\n%%s\\n%%s\\n%%s\\n%%s\\n' \"$DFL_ROOT\" \"$DFL_COMPONENT_ROOT\" \"$DOTF\" \"$DFL_DRY_RUN\" \"$PATH\" > %q\n", outputFile)
+	script := fmt.Sprintf("#!/bin/sh\nprintf '%%s\\n%%s\\n%%s\\n%%s\\n%%s\\n%%s\\n' \"$DFL_ROOT\" \"$DFL_COMPONENT_ROOT\" \"$DOTF\" \"$DFL_DRY_RUN\" \"$DFL_LOG\" \"$PATH\" > %q\n", outputFile)
 	if err := os.WriteFile(filepath.Join(repoRoot, "core", "setup"), []byte(script), 0o755); err != nil {
 		t.Fatalf("WriteFile setup: %v", err)
 	}
@@ -113,11 +113,11 @@ func TestRunSetsSetupEnvironment(t *testing.T) {
 	}
 
 	parts := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
-	if len(parts) != 5 {
-		t.Fatalf("env output lines = %d, want 5", len(parts))
+	if len(parts) != 6 {
+		t.Fatalf("env output lines = %d, want 6", len(parts))
 	}
-	if parts[0] != repoRoot || parts[1] != filepath.Join(repoRoot, "core") || parts[2] != repoRoot || parts[3] != "1" {
-		t.Fatalf("unexpected setup env output: %q", parts[:4])
+	if parts[0] != repoRoot || parts[1] != filepath.Join(repoRoot, "core") || parts[2] != repoRoot || parts[3] != "1" || parts[4] == "" {
+		t.Fatalf("unexpected setup env output: %q", parts[:5])
 	}
 
 	exe, err := os.Executable()
@@ -125,7 +125,69 @@ func TestRunSetsSetupEnvironment(t *testing.T) {
 		t.Fatalf("os.Executable: %v", err)
 	}
 	exeDir := filepath.Dir(exe)
-	if !strings.HasPrefix(parts[4], exeDir+string(os.PathListSeparator)) && parts[4] != exeDir {
-		t.Fatalf("PATH = %q, want it to start with %q", parts[4], exeDir)
+	if !strings.HasPrefix(parts[5], exeDir+string(os.PathListSeparator)) && parts[5] != exeDir {
+		t.Fatalf("PATH = %q, want it to start with %q", parts[5], exeDir)
+	}
+}
+
+func TestRunPrintsSetupSummary(t *testing.T) {
+	repoRoot := t.TempDir()
+	coreDir := filepath.Join(repoRoot, "core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll core: %v", err)
+	}
+
+	dflPath := filepath.Join(repoRoot, "dfl")
+	dflScript := `#!/bin/sh
+case "$1:$2" in
+  step:start)
+    printf '{"type":"step_start","text":"%s"}\n' "$3" >> "$DFL_LOG"
+    ;;
+  step:success)
+    printf '{"type":"step_end","status":"success","message":"%s"}\n' "$3" >> "$DFL_LOG"
+    ;;
+  step:error)
+    printf '{"type":"step_end","status":"failed","message":"%s"}\n' "$3" >> "$DFL_LOG"
+    ;;
+esac
+`
+	if err := os.WriteFile(dflPath, []byte(dflScript), 0o755); err != nil {
+		t.Fatalf("WriteFile dfl shim: %v", err)
+	}
+
+	setupScript := fmt.Sprintf("#!/bin/sh\nPATH=%q:$PATH\nDFL_LOG=${DFL_LOG:?}\ndfl step start 'create directory X'\ndfl step success 'already exists'\nprintf '{\"type\":\"step_result\",\"text\":\"git-clone this repo\",\"status\":\"failed\",\"message\":\"failed\",\"output\":\"line 1\\\\nline 2\\\\n\"}\\n' >> \"$DFL_LOG\"\n", repoRoot)
+	if err := os.WriteFile(filepath.Join(coreDir, "setup"), []byte(setupScript), 0o755); err != nil {
+		t.Fatalf("WriteFile setup: %v", err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	runner := Runner{Stdout: &stdout, Stderr: &stderr}
+
+	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("Run returned code %d, want 0", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "Setup Summary") {
+		t.Fatalf("stdout = %q, want setup summary", output)
+	}
+	if !strings.Contains(output, "create directory X... already exists") {
+		t.Fatalf("stdout = %q, want successful summary line", output)
+	}
+	if !strings.Contains(output, "git-clone this repo... failed") {
+		t.Fatalf("stdout = %q, want failed summary line", output)
+	}
+	if !strings.Contains(output, "    line 1") || !strings.Contains(output, "    line 2") {
+		t.Fatalf("stdout = %q, want failure details", output)
+	}
+	if !strings.Contains(output, "\n\n✗ dfl setup failed: 1 of 2 steps failed\n") {
+		t.Fatalf("stdout = %q, want final setup summary line", output)
 	}
 }

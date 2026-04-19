@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"dfl/internal/setuplog"
 )
 
 func TestRunHasCommandReturnsSuccessForSh(t *testing.T) {
@@ -223,6 +225,44 @@ func TestRunStepStartCommand(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "◆ demo") {
 		t.Fatalf("stdout = %q, want step header", stdout.String())
+	}
+}
+
+func TestRunStepCommandsWriteSetupLogRecords(t *testing.T) {
+	logPath := filepath.Join(t.TempDir(), "setup.jsonl")
+	t.Setenv("DFL_LOG", logPath)
+
+	app := NewApp()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	app.SetStdout(&stdout)
+	app.SetStderr(&stderr)
+
+	code, err := app.Run([]string{"step", "start", "demo"})
+	if err != nil {
+		t.Fatalf("Run step start returned error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("Run step start returned code %d, want 0", code)
+	}
+
+	code, err = app.Run([]string{"step", "success", "done"})
+	if err != nil {
+		t.Fatalf("Run step success returned error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("Run step success returned code %d, want 0", code)
+	}
+
+	steps, err := setuplog.Read(logPath)
+	if err != nil {
+		t.Fatalf("Read setup log: %v", err)
+	}
+	if len(steps) != 1 {
+		t.Fatalf("len(steps) = %d, want 1", len(steps))
+	}
+	if steps[0].Text != "demo" || steps[0].Message != "done" {
+		t.Fatalf("step = %#v, want paired start/end record", steps[0])
 	}
 }
 

@@ -2,10 +2,13 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"dfl/internal/packagemgr"
 	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runtimecmd"
+	"dfl/internal/setuplog"
 	"dfl/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -109,14 +112,19 @@ func (a *App) newPkgGitHubInstallCommand() *cobra.Command {
 				}
 
 				stepLabel := fmt.Sprintf("Installing GitHub package %s", repo)
-				err = ui.Step(a.stdoutWriter(), stepLabel, func() (runtimectx.ResultStatus, string, error) {
-					result, err := installer.Install("", "")
-					if err != nil {
-						return "", "", err
-					}
-					return result.Status, result.Message, nil
-				})
+				if err := ui.StepStart(a.stdoutWriter(), stepLabel); err != nil {
+					return err
+				}
+				result, err := installer.Install("", "")
 				if err != nil {
+					_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runtimectx.StatusFailed, "failed", runtimecmd.OutputFromError(err))
+					if stepErr := ui.StepEnd(a.stdoutWriter(), runtimectx.StatusFailed, "failed"); stepErr != nil {
+						return stepErr
+					}
+					return err
+				}
+				_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, result.Status, result.Message, "")
+				if err := ui.StepEnd(a.stdoutWriter(), result.Status, result.Message); err != nil {
 					return err
 				}
 			}

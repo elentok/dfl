@@ -2,6 +2,7 @@ package runtimecmd
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	runtimectx "dfl/internal/runtime"
+	"dfl/internal/setuplog"
 	"dfl/internal/ui"
 )
 
@@ -21,6 +23,33 @@ type Runner struct {
 	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
+}
+
+type OutputError struct {
+	Err    error
+	Output string
+}
+
+func (e *OutputError) Error() string {
+	if e.Err == nil {
+		return ""
+	}
+	return e.Err.Error()
+}
+
+func (e *OutputError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
+func OutputFromError(err error) string {
+	var outputErr *OutputError
+	if errors.As(err, &outputErr) {
+		return strings.TrimSpace(outputErr.Output)
+	}
+	return ""
 }
 
 func (o Runner) HasCommand(name string) (bool, error) {
@@ -92,28 +121,34 @@ func (o Runner) Shell(ctx runtimectx.Context, name string, command []string) (in
 		if err := o.StepEnd(runtimectx.StatusSkipped, "dry-run"); err != nil {
 			return 1, err
 		}
+		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), name, runtimectx.StatusSkipped, "dry-run", "")
 		return 0, nil
 	}
 
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
 	cmd := exec.Command(command[0], command[1:]...)
-	cmd.Stdout = o.stdout()
-	cmd.Stderr = o.stderr()
+	cmd.Stdout = io.MultiWriter(o.stdout(), &stdoutBuf)
+	cmd.Stderr = io.MultiWriter(o.stderr(), &stderrBuf)
 	cmd.Env = os.Environ()
 
 	if err := cmd.Run(); err != nil {
 		_ = o.StepEnd(runtimectx.StatusFailed, "command failed")
+		output := combinedOutput(stdoutBuf.String(), stderrBuf.String())
+		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), name, runtimectx.StatusFailed, "command failed", output)
 
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			return exitErr.ExitCode(), nil
+			return exitErr.ExitCode(), &OutputError{Err: err, Output: output}
 		}
 
-		return 1, err
+		return 1, &OutputError{Err: err, Output: output}
 	}
 
 	if err := o.StepEnd(runtimectx.StatusSuccess, "done"); err != nil {
 		return 1, err
 	}
+	_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), name, runtimectx.StatusSuccess, "done", "")
 
 	return 0, nil
 }
@@ -176,10 +211,12 @@ func (o Runner) GitClone(ctx runtimectx.Context, origin, target string, update b
 	}
 
 	cmd := exec.Command("git", "clone", resolvedOrigin, resolvedTarget)
-	cmd.Stdout = o.stdout()
-	cmd.Stderr = o.stderr()
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
+	cmd.Stdout = io.MultiWriter(o.stdout(), &stdoutBuf)
+	cmd.Stderr = io.MultiWriter(o.stderr(), &stderrBuf)
 	if err := cmd.Run(); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runtimectx.StatusFailed, "", &OutputError{Err: err, Output: combinedOutput(stdoutBuf.String(), stderrBuf.String())}
 	}
 	return runtimectx.StatusSuccess, fmt.Sprintf("cloned %s into %s", resolvedOrigin, resolvedTarget), nil
 }
@@ -414,7 +451,10 @@ func gitOrigin(dir string) (string, error) {
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("git remote get-url origin failed: %w: %s", err, strings.TrimSpace(string(output)))
+		return "", &OutputError{
+			Err:    fmt.Errorf("git remote get-url origin failed: %w: %s", err, strings.TrimSpace(string(output))),
+			Output: string(output),
+		}
 	}
 	return strings.TrimSpace(string(output)), nil
 }
@@ -529,7 +569,10 @@ func gitPull(dir string) (gitPullResult, error) {
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return gitPullResult{}, fmt.Errorf("git pull failed: %w: %s", err, strings.TrimSpace(string(output)))
+		return gitPullResult{}, &OutputError{
+			Err:    fmt.Errorf("git pull failed: %w: %s", err, strings.TrimSpace(string(output))),
+			Output: string(output),
+		}
 	}
 
 	after, err := gitHead(dir)
@@ -552,7 +595,10 @@ func gitHead(dir string) (string, error) {
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("git rev-parse HEAD failed: %w: %s", err, strings.TrimSpace(string(output)))
+		return "", &OutputError{
+			Err:    fmt.Errorf("git rev-parse HEAD failed: %w: %s", err, strings.TrimSpace(string(output))),
+			Output: string(output),
+		}
 	}
 	return strings.TrimSpace(string(output)), nil
 }
@@ -562,7 +608,10 @@ func gitCommitCount(dir, before, after string) (int, error) {
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return 0, fmt.Errorf("git rev-list --count failed: %w: %s", err, strings.TrimSpace(string(output)))
+		return 0, &OutputError{
+			Err:    fmt.Errorf("git rev-list --count failed: %w: %s", err, strings.TrimSpace(string(output))),
+			Output: string(output),
+		}
 	}
 
 	countText := strings.TrimSpace(string(output))
@@ -578,6 +627,17 @@ func commitsPulledMessage(count int) string {
 		return "1 commit pulled"
 	}
 	return fmt.Sprintf("%d commits pulled", count)
+}
+
+func combinedOutput(stdout, stderr string) string {
+	switch {
+	case strings.TrimSpace(stdout) == "":
+		return strings.TrimSpace(stderr)
+	case strings.TrimSpace(stderr) == "":
+		return strings.TrimSpace(stdout)
+	default:
+		return strings.TrimSpace(stdout) + "\n" + strings.TrimSpace(stderr)
+	}
 }
 
 func (o Runner) stdout() io.Writer {
