@@ -140,7 +140,10 @@ func (a *App) newGitCloneCommand() *cobra.Command {
 			}
 			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).GitClone(ctx, args[0], args[1], update)
 			if err != nil {
-				return err
+				if stepErr := ui.StepEnd(a.stdoutWriter(), status, message); stepErr != nil {
+					return stepErr
+				}
+				return exitError{code: 1, err: err}
 			}
 			return ui.StepEnd(a.stdoutWriter(), status, message)
 		},

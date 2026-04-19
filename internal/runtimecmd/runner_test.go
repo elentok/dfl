@@ -199,8 +199,8 @@ func TestGitCloneUpdatesWhenRequested(t *testing.T) {
 	if status != runtimectx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
-	if !strings.Contains(message, "already cloned, updated") {
-		t.Fatalf("message = %q, want update output", message)
+	if message != "1 commit pulled" {
+		t.Fatalf("message = %q, want 1 commit pulled", message)
 	}
 
 	data, err := os.ReadFile(filepath.Join(target, "README.md"))
@@ -209,6 +209,110 @@ func TestGitCloneUpdatesWhenRequested(t *testing.T) {
 	}
 	if string(data) != "updated\n" {
 		t.Fatalf("README.md = %q, want updated content", string(data))
+	}
+}
+
+func TestGitCloneReportsUpToDateWhenPullHasNoChanges(t *testing.T) {
+	origin, _ := createOriginAndWorktree(t)
+	target := cloneRepo(t, origin, "target")
+
+	status, message, err := Runner{}.GitClone(runtimectx.Context{}, origin, target, true)
+	if err != nil {
+		t.Fatalf("GitClone returned error: %v", err)
+	}
+	if status != runtimectx.StatusSkipped {
+		t.Fatalf("status = %q, want skipped", status)
+	}
+	if message != "up-to-date" {
+		t.Fatalf("message = %q, want up-to-date", message)
+	}
+}
+
+func TestGitCloneReportsMultiplePulledCommits(t *testing.T) {
+	origin, worktree := createOriginAndWorktree(t)
+	target := cloneRepo(t, origin, "target")
+
+	writeFile(t, worktree, "README.md", "updated once\n")
+	gitRun(t, worktree, "add", "README.md")
+	gitRun(t, worktree, "commit", "-m", "update readme once")
+
+	writeFile(t, worktree, "README.md", "updated twice\n")
+	gitRun(t, worktree, "add", "README.md")
+	gitRun(t, worktree, "commit", "-m", "update readme twice")
+	gitRun(t, worktree, "push", "origin", "HEAD")
+
+	status, message, err := Runner{}.GitClone(runtimectx.Context{}, origin, target, true)
+	if err != nil {
+		t.Fatalf("GitClone returned error: %v", err)
+	}
+	if status != runtimectx.StatusSuccess {
+		t.Fatalf("status = %q, want success", status)
+	}
+	if message != "2 commits pulled" {
+		t.Fatalf("message = %q, want 2 commits pulled", message)
+	}
+}
+
+func TestGitCloneReportsFailedToPull(t *testing.T) {
+	origin, worktree := createOriginAndWorktree(t)
+	target := cloneRepo(t, origin, "target")
+
+	writeFile(t, worktree, "README.md", "remote change\n")
+	gitRun(t, worktree, "add", "README.md")
+	gitRun(t, worktree, "commit", "-m", "remote update")
+	gitRun(t, worktree, "push", "origin", "HEAD")
+
+	writeFile(t, target, "README.md", "local change\n")
+
+	status, message, err := Runner{}.GitClone(runtimectx.Context{}, origin, target, true)
+	if err == nil {
+		t.Fatal("GitClone returned nil error, want pull failure")
+	}
+	if status != runtimectx.StatusFailed {
+		t.Fatalf("status = %q, want failed", status)
+	}
+	if message != "failed to pull" {
+		t.Fatalf("message = %q, want failed to pull", message)
+	}
+}
+
+func TestResolveCloneOriginDefaultsGitHubSlugToHTTPS(t *testing.T) {
+	resolved, err := resolveCloneOrigin("", "elentok/stuff.nvim")
+	if err != nil {
+		t.Fatalf("resolveCloneOrigin returned error: %v", err)
+	}
+	if resolved != "https://github.com/elentok/stuff.nvim.git" {
+		t.Fatalf("resolved = %q, want https github url", resolved)
+	}
+}
+
+func TestResolveCloneOriginInheritsSSHFromRepoOrigin(t *testing.T) {
+	repoRoot := createGitRepoWithOrigin(t, "git@github.com:elentok/dotfiles.git")
+
+	resolved, err := resolveCloneOrigin(repoRoot, "elentok/stuff.nvim")
+	if err != nil {
+		t.Fatalf("resolveCloneOrigin returned error: %v", err)
+	}
+	if resolved != "git@github.com:elentok/stuff.nvim.git" {
+		t.Fatalf("resolved = %q, want ssh github url", resolved)
+	}
+}
+
+func TestResolveCloneOriginKeepsExplicitHTTPSOrigin(t *testing.T) {
+	repoRoot := createGitRepoWithOrigin(t, "git@github.com:elentok/dotfiles.git")
+
+	resolved, err := resolveCloneOrigin(repoRoot, "https://github.com/elentok/stuff.nvim")
+	if err != nil {
+		t.Fatalf("resolveCloneOrigin returned error: %v", err)
+	}
+	if resolved != "https://github.com/elentok/stuff.nvim" {
+		t.Fatalf("resolved = %q, want explicit https origin", resolved)
+	}
+}
+
+func TestSameCloneOriginTreatsGitHubTransportVariantsAsSameRepo(t *testing.T) {
+	if !sameCloneOrigin("git@github.com:elentok/stuff.nvim.git", "https://github.com/elentok/stuff.nvim.git") {
+		t.Fatal("sameCloneOrigin returned false, want true for same github repo")
 	}
 }
 
@@ -235,6 +339,15 @@ func cloneRepo(t *testing.T, origin, name string) string {
 	target := filepath.Join(t.TempDir(), name)
 	gitRun(t, filepath.Dir(target), "clone", origin, target)
 	return target
+}
+
+func createGitRepoWithOrigin(t *testing.T, origin string) string {
+	t.Helper()
+
+	repoRoot := t.TempDir()
+	gitRun(t, repoRoot, "init")
+	gitRun(t, repoRoot, "remote", "add", "origin", origin)
+	return repoRoot
 }
 
 func writeFile(t *testing.T, dir, name, contents string) {
