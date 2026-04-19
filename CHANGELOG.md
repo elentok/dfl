@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.3] - 2026-04-19
+
+### Added
+
+- `dfl setup` now prints a final step summary with per-step success/skip lines and detailed failed-step output.
+
+### Changed
+
+- `dfl git-clone` now inherits GitHub SSH/HTTPS transport from the dotfiles repo when given `owner/repo`, while still preserving explicit clone URLs as-is.
+- `dfl git-clone --update` now reports `up-to-date`, `N commits pulled`, or `failed to pull` based on the actual pull result.
+
 ## [0.2.2] - 2026-04-18
 
 - `dfl update` now offers to stash tracked local changes before pulling and restores the stash after a successful pull.
