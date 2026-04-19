@@ -4,14 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.4] - 2026-04-19
+
+- `dfl setup` now includes component install headers in the final setup summary.
+
 ## [0.2.3] - 2026-04-19
 
-### Added
-
 - `dfl setup` now prints a final step summary with per-step success/skip lines and detailed failed-step output.
-
-### Changed
-
 - `dfl git-clone` now inherits GitHub SSH/HTTPS transport from the dotfiles repo when given `owner/repo`, while still preserving explicit clone URLs as-is.
 - `dfl git-clone --update` now reports `up-to-date`, `N commits pulled`, or `failed to pull` based on the actual pull result.
 
