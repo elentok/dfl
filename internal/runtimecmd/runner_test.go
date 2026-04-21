@@ -85,8 +85,8 @@ func TestSymlinkSkipsWhenAlreadyCorrect(t *testing.T) {
 	if status != runtimectx.StatusSkipped {
 		t.Fatalf("status = %q, want skipped", status)
 	}
-	if !strings.Contains(message, "already exists at") {
-		t.Fatalf("message = %q, want verbose skip output", message)
+	if message != "already exists" {
+		t.Fatalf("message = %q, want exact skip output", message)
 	}
 }
 

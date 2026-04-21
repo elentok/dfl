@@ -235,7 +235,7 @@ func (o Runner) Symlink(ctx runtimectx.Context, componentRoot, source, target st
 				return runtimectx.StatusFailed, "", err
 			}
 			if samePath(current, resolvedSource, filepath.Dir(resolvedTarget)) {
-				return runtimectx.StatusSkipped, fmt.Sprintf("already exists at %s", resolvedTarget), nil
+				return runtimectx.StatusSkipped, "already exists", nil
 			}
 		}
 
