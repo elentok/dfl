@@ -311,6 +311,45 @@ func (o Runner) Copy(ctx runtimectx.Context, componentRoot, source, target strin
 	return runtimectx.StatusSuccess, fmt.Sprintf("copied %s", resolvedTarget), nil
 }
 
+func (o Runner) Inject(ctx runtimectx.Context, componentRoot, source, target string) (runtimectx.ResultStatus, string, error) {
+	resolvedSource, resolvedTarget, err := resolvePaths(componentRoot, source, target)
+	if err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	sourceData, err := os.ReadFile(resolvedSource)
+	if err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	targetData, err := os.ReadFile(resolvedTarget)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	rendered, err := renderInjectedFile(string(targetData), string(sourceData), displayPath(resolvedSource))
+	if err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	if string(targetData) == rendered {
+		return runtimectx.StatusSkipped, "already up to date", nil
+	}
+
+	if ctx.DryRun {
+		return runtimectx.StatusSuccess, fmt.Sprintf("would inject %s into %s", resolvedSource, resolvedTarget), nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(resolvedTarget), 0o755); err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+	if err := os.WriteFile(resolvedTarget, []byte(rendered), targetMode(resolvedTarget, resolvedSource)); err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	return runtimectx.StatusSuccess, "done", nil
+}
+
 func (o Runner) Mkdir(ctx runtimectx.Context, path string) (runtimectx.ResultStatus, string, error) {
 	resolvedPath, err := expandPath(path)
 	if err != nil {
@@ -426,12 +465,88 @@ func sameFileContents(source, target string) (bool, error) {
 	return string(sourceData) == string(targetData), nil
 }
 
+const (
+	injectStartPrefix = "<!-- dfl:inject:start source="
+	injectEndMarker   = "<!-- dfl:inject:end -->"
+)
+
+func renderInjectedFile(targetContent, sourceContent, sourcePath string) (string, error) {
+	base, err := stripManagedInjection(targetContent)
+	if err != nil {
+		return "", err
+	}
+
+	base = strings.TrimRight(base, "\n")
+	sourceContent = strings.TrimRight(sourceContent, "\n")
+
+	var b strings.Builder
+	if base != "" {
+		b.WriteString(base)
+		b.WriteString("\n\n")
+	}
+	b.WriteString(injectStartMarker(sourcePath))
+	b.WriteString("\n")
+	if sourceContent != "" {
+		b.WriteString(sourceContent)
+		b.WriteString("\n")
+	}
+	b.WriteString(injectEndMarker)
+	b.WriteString("\n")
+	return b.String(), nil
+}
+
+func stripManagedInjection(content string) (string, error) {
+	start := strings.Index(content, injectStartPrefix)
+	end := strings.Index(content, injectEndMarker)
+
+	switch {
+	case start == -1 && end == -1:
+		return content, nil
+	case start == -1 || end == -1:
+		return "", errors.New("found incomplete injected block")
+	case end < start:
+		return "", errors.New("found invalid injected block ordering")
+	}
+
+	end += len(injectEndMarker)
+	return strings.TrimRight(content[:start]+content[end:], "\n"), nil
+}
+
+func injectStartMarker(sourcePath string) string {
+	return injectStartPrefix + sourcePath + " -->"
+}
+
 func sourceMode(path string) fs.FileMode {
 	info, err := os.Stat(path)
 	if err != nil {
 		return 0o644
 	}
 	return info.Mode().Perm()
+}
+
+func targetMode(target, source string) fs.FileMode {
+	info, err := os.Stat(target)
+	if err == nil {
+		return info.Mode().Perm()
+	}
+	return sourceMode(source)
+}
+
+func displayPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+
+	cleanHome := filepath.Clean(home)
+	cleanPath := filepath.Clean(path)
+	if cleanPath == cleanHome {
+		return "~"
+	}
+	if strings.HasPrefix(cleanPath, cleanHome+string(filepath.Separator)) {
+		return "~" + string(filepath.Separator) + strings.TrimPrefix(cleanPath, cleanHome+string(filepath.Separator))
+	}
+	return cleanPath
 }
 
 func nextBackupPath(path string) (string, error) {

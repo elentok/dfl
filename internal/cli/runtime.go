@@ -198,6 +198,30 @@ func (a *App) newCopyCommand() *cobra.Command {
 	})
 }
 
+func (a *App) newInjectCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "inject <source-file> <target-file>",
+		Short: "inject",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, err := a.runtimeContext()
+			if err != nil {
+				return err
+			}
+			label := fmt.Sprintf("Injecting %s into %s...", args[0], args[1])
+			if err := ui.StepStart(a.stdoutWriter(), label); err != nil {
+				return err
+			}
+			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Inject(ctx, componentRoot(), args[0], args[1])
+			if err != nil {
+				return err
+			}
+			logStepResult(label, status, message, nil)
+			return ui.StepEnd(a.stdoutWriter(), status, message)
+		},
+	}
+}
+
 func (a *App) newMkdirCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "mkdir <path>",

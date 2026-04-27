@@ -31,6 +31,7 @@ func (a *App) newRootCommand() *cobra.Command {
 		a.newGitCloneCommand(),
 		a.newSymlinkCommand(),
 		a.newCopyCommand(),
+		a.newInjectCommand(),
 		a.newMkdirCommand(),
 		a.newBackupCommand(),
 		a.newRepoRootCommand(),

@@ -67,6 +67,31 @@ func TestShellDryRunSkipsExecution(t *testing.T) {
 	}
 }
 
+func TestShellPassesParentEnvironment(t *testing.T) {
+	t.Setenv("DFL_TEST_PARENT_ENV", "from-parent")
+
+	var stdout bytes.Buffer
+	ops := Runner{Stdout: &stdout}
+	ctx := runtimectx.Context{}
+
+	code, err := ops.Shell(ctx, "env", []string{
+		"sh",
+		"-c",
+		`printf '%s\n' "$DFL_TEST_PARENT_ENV"`,
+	})
+	if err != nil {
+		t.Fatalf("Shell returned error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("Shell returned code %d, want 0", code)
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "from-parent\n") {
+		t.Fatalf("stdout = %q, want parent environment in child", output)
+	}
+}
+
 func TestSymlinkSkipsWhenAlreadyCorrect(t *testing.T) {
 	tempDir := t.TempDir()
 	source := filepath.Join(tempDir, "source")
@@ -140,6 +165,109 @@ func TestCopyDryRunDoesNotModifyTarget(t *testing.T) {
 	}
 	if string(data) != "old" {
 		t.Fatalf("target contents = %q, want unchanged", string(data))
+	}
+}
+
+func TestInjectAppendsManagedBlock(t *testing.T) {
+	tempDir := t.TempDir()
+	source := filepath.Join(tempDir, "source.md")
+	target := filepath.Join(tempDir, "target.md")
+	if err := os.WriteFile(source, []byte("this is the dotfiles' AGENTS.md\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile source: %v", err)
+	}
+	if err := os.WriteFile(target, []byte("this is the user-scope Codex AGENTS.md\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+
+	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target)
+	if err != nil {
+		t.Fatalf("Inject returned error: %v", err)
+	}
+	if status != runtimectx.StatusSuccess {
+		t.Fatalf("status = %q, want success", status)
+	}
+	if message != "done" {
+		t.Fatalf("message = %q, want done", message)
+	}
+
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("ReadFile target: %v", err)
+	}
+
+	want := "this is the user-scope Codex AGENTS.md\n\n<!-- dfl:inject:start source=" + source + " -->\nthis is the dotfiles' AGENTS.md\n<!-- dfl:inject:end -->\n"
+	if string(data) != want {
+		t.Fatalf("target = %q, want %q", string(data), want)
+	}
+}
+
+func TestInjectReplacesExistingManagedBlock(t *testing.T) {
+	tempDir := t.TempDir()
+	source := filepath.Join(tempDir, "source.md")
+	target := filepath.Join(tempDir, "target.md")
+	if err := os.WriteFile(source, []byte("second version\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile source: %v", err)
+	}
+	initial := "base text\n\n<!-- dfl:inject:start source=/old/source.md -->\nfirst version\n<!-- dfl:inject:end -->\n"
+	if err := os.WriteFile(target, []byte(initial), 0o644); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+
+	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target)
+	if err != nil {
+		t.Fatalf("Inject returned error: %v", err)
+	}
+	if status != runtimectx.StatusSuccess {
+		t.Fatalf("status = %q, want success", status)
+	}
+	if message != "done" {
+		t.Fatalf("message = %q, want done", message)
+	}
+
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("ReadFile target: %v", err)
+	}
+	output := string(data)
+	if strings.Count(output, injectEndMarker) != 1 {
+		t.Fatalf("target = %q, want exactly one managed block", output)
+	}
+	if !strings.Contains(output, "second version\n") {
+		t.Fatalf("target = %q, want updated source contents", output)
+	}
+	if strings.Contains(output, "first version\n") {
+		t.Fatalf("target = %q, want stale source contents removed", output)
+	}
+}
+
+func TestInjectDryRunDoesNotModifyTarget(t *testing.T) {
+	tempDir := t.TempDir()
+	source := filepath.Join(tempDir, "source.md")
+	target := filepath.Join(tempDir, "target.md")
+	if err := os.WriteFile(source, []byte("injected text\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile source: %v", err)
+	}
+	if err := os.WriteFile(target, []byte("base text\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+
+	status, message, err := Runner{}.Inject(runtimectx.Context{DryRun: true}, tempDir, source, target)
+	if err != nil {
+		t.Fatalf("Inject returned error: %v", err)
+	}
+	if status != runtimectx.StatusSuccess {
+		t.Fatalf("status = %q, want success", status)
+	}
+	if !strings.Contains(message, "would inject") {
+		t.Fatalf("message = %q, want dry-run output", message)
+	}
+
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("ReadFile target: %v", err)
+	}
+	if string(data) != "base text\n" {
+		t.Fatalf("target = %q, want unchanged", string(data))
 	}
 }
 
