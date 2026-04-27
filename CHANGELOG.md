@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.5] - 2026-04-27
+
+- Added `dfl inject <source-file> <target-file>` for appending managed injected content into target
+  files, it uses HTML comment markers for managed blocks, replaces existing injected blocks on
+  rerun, and prints explicit step-start output with terse `done` success status.
+
 ## [0.2.4] - 2026-04-19
 
 - `dfl setup` now includes component install headers in the final setup summary.
