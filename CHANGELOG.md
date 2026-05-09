@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.6] - 2026-05-09
+
+- `dfl pkg github install` now tries additional GitHub release asset filename variants (including
+  lowercase OS names, Go arch names like `amd64`, and version strings without a leading `v`) so
+  repositories with different release naming conventions install correctly.
+
 ## [0.2.5] - 2026-04-27
 
 - Added `dfl inject <source-file> <target-file>` for appending managed injected content into target
