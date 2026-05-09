@@ -99,12 +99,12 @@ func (i GitHubInstaller) Install(version, target string) (GitHubInstallResult, e
 			return GitHubInstallResult{}, err
 		}
 
-		archiveURL, err := i.downloadURL(desiredVersion)
+		archiveURLs, err := i.downloadURLs(desiredVersion)
 		if err != nil {
 			return GitHubInstallResult{}, err
 		}
 
-		binary, err := i.downloadBinary(archiveURL)
+		binary, err := i.downloadBinary(archiveURLs)
 		if err != nil {
 			return GitHubInstallResult{}, err
 		}
@@ -146,49 +146,6 @@ func DefaultBinaryInstallPath(binaryName string) (string, error) {
 	return filepath.Join(home, ".local", "bin", binaryName), nil
 }
 
-func DownloadBinaryURL(repository, binaryName, version, goos, goarch, base string) (string, error) {
-	asset, err := assetName(binaryName, goos, goarch)
-	if err != nil {
-		return "", err
-	}
-	if base == "" {
-		base = releaseBaseURL(repository)
-	}
-	base = strings.TrimRight(base, "/")
-	if version == "" {
-		return base + "/latest/download/" + asset, nil
-	}
-	return base + "/download/" + version + "/" + asset, nil
-}
-
-func assetName(binaryName, goos, goarch string) (string, error) {
-	if binaryName == "" {
-		return "", fmt.Errorf("binary name is required")
-	}
-
-	var osName string
-	switch goos {
-	case "darwin":
-		osName = "Darwin"
-	case "linux":
-		osName = "Linux"
-	default:
-		return "", fmt.Errorf("unsupported OS %q", goos)
-	}
-
-	var archName string
-	switch goarch {
-	case "amd64":
-		archName = "x86_64"
-	case "arm64":
-		archName = "arm64"
-	default:
-		return "", fmt.Errorf("unsupported architecture %q", goarch)
-	}
-
-	return fmt.Sprintf("%s_%s_%s.tar.gz", binaryName, osName, archName), nil
-}
-
 func (i GitHubInstaller) pathEnv() string {
 	if i.PathEnv != "" {
 		return i.PathEnv
@@ -228,30 +185,50 @@ func (i GitHubInstaller) resolveTarget(target string) (string, error) {
 	return filepath.Abs(target)
 }
 
-func (i GitHubInstaller) downloadURL(version string) (string, error) {
+func (i GitHubInstaller) downloadURLs(version string) ([]string, error) {
 	repository, err := i.repository()
-	if err != nil {
-		return "", err
-	}
-	binaryName, err := i.binaryName()
-	if err != nil {
-		return "", err
-	}
-	return DownloadBinaryURL(repository, binaryName, version, i.currentGOOS(), i.currentGOARCH(), i.ReleaseBaseURL)
-}
-
-func (i GitHubInstaller) downloadBinary(url string) ([]byte, error) {
-	resp, err := i.httpClient().Get(url)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	binaryName, err := i.binaryName()
+	if err != nil {
+		return nil, err
+	}
+	return downloadBinaryURLs(repository, binaryName, version, i.currentGOOS(), i.currentGOARCH(), i.ReleaseBaseURL)
+}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download failed: %s", resp.Status)
+func (i GitHubInstaller) downloadBinary(urls []string) ([]byte, error) {
+	var lastErr error
+	for _, url := range urls {
+		resp, err := i.httpClient().Get(url)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("download failed from %s: %s", url, resp.Status)
+			resp.Body.Close()
+			continue
+		}
+
+		binary, err := i.extractBinary(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			lastErr = fmt.Errorf("extract binary from %s: %w", url, err)
+			continue
+		}
+		return binary, nil
 	}
 
-	gzr, err := gzip.NewReader(resp.Body)
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no download URLs provided")
+	}
+	return nil, lastErr
+}
+
+func (i GitHubInstaller) extractBinary(reader io.Reader) ([]byte, error) {
+	gzr, err := gzip.NewReader(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -277,6 +254,125 @@ func (i GitHubInstaller) downloadBinary(url string) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("archive did not contain %s", binaryName)
+}
+
+func downloadBinaryURLs(repository, binaryName, version, goos, goarch, base string) ([]string, error) {
+	assets, err := assetNames(binaryName, version, goos, goarch)
+	if err != nil {
+		return nil, err
+	}
+	if base == "" {
+		base = releaseBaseURL(repository)
+	}
+	base = strings.TrimRight(base, "/")
+
+	urls := make([]string, 0, len(assets))
+	for _, asset := range assets {
+		if version == "" {
+			urls = append(urls, base+"/latest/download/"+asset)
+			continue
+		}
+		urls = append(urls, base+"/download/"+version+"/"+asset)
+	}
+	return urls, nil
+}
+
+func DownloadBinaryURL(repository, binaryName, version, goos, goarch, base string) (string, error) {
+	urls, err := downloadBinaryURLs(repository, binaryName, version, goos, goarch, base)
+	if err != nil {
+		return "", err
+	}
+	return urls[0], nil
+}
+
+func assetNames(binaryName, version, goos, goarch string) ([]string, error) {
+	legacyAsset, err := assetName(binaryName, goos, goarch)
+	if err != nil {
+		return nil, err
+	}
+
+	osNames, err := osAssetNames(goos)
+	if err != nil {
+		return nil, err
+	}
+	archNames, err := archAssetNames(goarch)
+	if err != nil {
+		return nil, err
+	}
+
+	seen := map[string]struct{}{}
+	var assets []string
+	addAsset := func(name string) {
+		if _, ok := seen[name]; ok {
+			return
+		}
+		seen[name] = struct{}{}
+		assets = append(assets, name)
+	}
+
+	addAsset(legacyAsset)
+	if version != "" {
+		addAsset(fmt.Sprintf("%s_%s_%s", binaryName, version, strings.TrimPrefix(legacyAsset, binaryName+"_")))
+
+		versionNoV := strings.TrimPrefix(version, "v")
+		for _, osName := range osNames {
+			for _, archName := range archNames {
+				addAsset(fmt.Sprintf("%s_%s_%s_%s.tar.gz", binaryName, versionNoV, osName, archName))
+				addAsset(fmt.Sprintf("%s_%s_%s_%s.tar.gz", binaryName, version, osName, archName))
+			}
+		}
+	}
+	return assets, nil
+}
+
+func osAssetNames(goos string) ([]string, error) {
+	switch goos {
+	case "darwin":
+		return []string{"Darwin", "darwin"}, nil
+	case "linux":
+		return []string{"Linux", "linux"}, nil
+	default:
+		return nil, fmt.Errorf("unsupported OS %q", goos)
+	}
+}
+
+func archAssetNames(goarch string) ([]string, error) {
+	switch goarch {
+	case "amd64":
+		return []string{"x86_64", "amd64"}, nil
+	case "arm64":
+		return []string{"arm64"}, nil
+	default:
+		return nil, fmt.Errorf("unsupported architecture %q", goarch)
+	}
+}
+
+func assetName(binaryName, goos, goarch string) (string, error) {
+	if binaryName == "" {
+		return "", fmt.Errorf("binary name is required")
+	}
+
+	var osName string
+	switch goos {
+	case "darwin":
+		osName = "Darwin"
+	case "linux":
+		osName = "Linux"
+	default:
+		return "", fmt.Errorf("unsupported OS %q", goos)
+	}
+
+	var archName string
+	switch goarch {
+	case "amd64":
+		archName = "x86_64"
+	case "arm64":
+		archName = "arm64"
+	default:
+		return "", fmt.Errorf("unsupported architecture %q", goarch)
+	}
+
+	return fmt.Sprintf("%s_%s_%s.tar.gz", binaryName, osName, archName), nil
 }
 
 func (i GitHubInstaller) repository() (string, error) {

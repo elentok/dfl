@@ -35,6 +35,24 @@ func TestDownloadBinaryURLUsesExplicitVersion(t *testing.T) {
 	}
 }
 
+func TestDownloadBinaryURLIncludesVersionedAssetCandidate(t *testing.T) {
+	urls, err := downloadBinaryURLs("example/tool-mcp", "tool-mcp", "v1.0.4", "darwin", "arm64", "https://example.com/releases")
+	if err != nil {
+		t.Fatalf("downloadBinaryURLs returned error: %v", err)
+	}
+	if len(urls) < 3 {
+		t.Fatalf("len(urls) = %d, want at least 3 candidates", len(urls))
+	}
+	if want := "https://example.com/releases/download/v1.0.4/tool-mcp_Darwin_arm64.tar.gz"; urls[0] != want {
+		t.Fatalf("urls[0] = %q, want %q", urls[0], want)
+	}
+
+	wantVersioned := "https://example.com/releases/download/v1.0.4/tool-mcp_1.0.4_darwin_arm64.tar.gz"
+	if !containsString(urls, wantVersioned) {
+		t.Fatalf("urls missing expected versioned asset %q; got %v", wantVersioned, urls)
+	}
+}
+
 func TestDownloadBinaryURLUsesRepositoryAndBinaryName(t *testing.T) {
 	url, err := DownloadBinaryURL("elentok/colr", "colr", "v1.2.3", "linux", "arm64", "")
 	if err != nil {
@@ -252,6 +270,37 @@ func TestGitHubInstallPrunesOlderManagedVersions(t *testing.T) {
 	}
 }
 
+func TestGitHubInstallFallsBackToVersionedAssetName(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests are Unix-only in this repo")
+	}
+
+	server := newVersionedAssetOnlyReleaseServer(t, "tool-mcp", "v1.0.4", "#!/bin/sh\necho installed\n")
+	defer server.Close()
+
+	linkPath := filepath.Join(t.TempDir(), "bin", "tool-mcp")
+	installer := GitHubInstaller{
+		Client:         server.Client(),
+		Repository:     "example/tool-mcp",
+		BinaryName:     "tool-mcp",
+		ReleaseBaseURL: server.URL,
+		GOOS:           "darwin",
+		GOARCH:         "arm64",
+		PathEnv:        os.Getenv("PATH"),
+	}
+
+	result, err := installer.Install("v1.0.4", linkPath)
+	if err != nil {
+		t.Fatalf("Install returned error: %v", err)
+	}
+	if result.Status != runtimectx.StatusSuccess {
+		t.Fatalf("Status = %q, want success", result.Status)
+	}
+	if _, err := os.Stat(managedBinaryPath(linkPath, "v1.0.4")); err != nil {
+		t.Fatalf("managed binary missing: %v", err)
+	}
+}
+
 func newGitHubReleaseServer(t *testing.T, binaryName string, versions map[string]string, latest string) *httptest.Server {
 	t.Helper()
 
@@ -283,6 +332,26 @@ func newGitHubReleaseServer(t *testing.T, binaryName string, versions map[string
 	}))
 }
 
+func newVersionedAssetOnlyReleaseServer(t *testing.T, binaryName, version, contents string) *httptest.Server {
+	t.Helper()
+
+	versionedAsset := binaryName + "_" + strings.TrimPrefix(version, "v") + "_darwin_arm64.tar.gz"
+	archive := makeArchive(t, binaryName, contents)
+
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/latest" {
+			http.Redirect(w, r, "/tag/"+version, http.StatusFound)
+			return
+		}
+		want := "/download/" + version + "/" + versionedAsset
+		if r.URL.Path != want {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write(archive)
+	}))
+}
+
 func makeArchive(t *testing.T, binaryName, contents string) []byte {
 	t.Helper()
 
@@ -304,4 +373,13 @@ func makeArchive(t *testing.T, binaryName, contents string) []byte {
 		t.Fatalf("gzw.Close: %v", err)
 	}
 	return buf.Bytes()
+}
+
+func containsString(items []string, needle string) bool {
+	for _, item := range items {
+		if item == needle {
+			return true
+		}
+	}
+	return false
 }
