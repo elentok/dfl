@@ -97,6 +97,7 @@ dfl pkg github install elentok/gx elentok/colr
 dfl symlink tmux.conf ~/.tmux.conf
 dfl copy config.toml ~/.config/myapp/config.toml
 dfl inject core/ai/AGENTS.md ~/.codex/AGENTS.md
+dfl inject --link core/ai/AGENTS.md ~/.codex/AGENTS.md
 dfl mkdir ~/.config/myapp
 dfl backup ~/.gitconfig
 dfl shell "Reload config" -- sh -c 'echo hello'
@@ -106,6 +107,8 @@ These commands are designed to produce consistent step-style output and to suppo
 
 `dfl inject <source-file> <target-file>` appends a managed injected block to the target file using
 HTML comment markers, and replaces that managed block on rerun instead of duplicating it.
+Use `dfl inject --link <source-file> <target-file>` to inject a reference payload line in the form
+`@/absolute/path/to/source` instead of file contents.
 
 GitHub package installs use the repository basename as the binary name and install into
 `~/.local/bin`. For example:

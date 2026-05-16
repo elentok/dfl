@@ -311,7 +311,7 @@ func (o Runner) Copy(ctx runtimectx.Context, componentRoot, source, target strin
 	return runtimectx.StatusSuccess, fmt.Sprintf("copied %s", resolvedTarget), nil
 }
 
-func (o Runner) Inject(ctx runtimectx.Context, componentRoot, source, target string) (runtimectx.ResultStatus, string, error) {
+func (o Runner) Inject(ctx runtimectx.Context, componentRoot, source, target string, link bool) (runtimectx.ResultStatus, string, error) {
 	resolvedSource, resolvedTarget, err := resolvePaths(componentRoot, source, target)
 	if err != nil {
 		return runtimectx.StatusFailed, "", err
@@ -327,7 +327,7 @@ func (o Runner) Inject(ctx runtimectx.Context, componentRoot, source, target str
 		return runtimectx.StatusFailed, "", err
 	}
 
-	rendered, err := renderInjectedFile(string(targetData), string(sourceData), displayPath(resolvedSource))
+	rendered, err := renderInjectedFile(string(targetData), string(sourceData), displayPath(resolvedSource), resolvedSource, link)
 	if err != nil {
 		return runtimectx.StatusFailed, "", err
 	}
@@ -337,6 +337,9 @@ func (o Runner) Inject(ctx runtimectx.Context, componentRoot, source, target str
 	}
 
 	if ctx.DryRun {
+		if link {
+			return runtimectx.StatusSuccess, fmt.Sprintf("would inject link %s into %s", resolvedSource, resolvedTarget), nil
+		}
 		return runtimectx.StatusSuccess, fmt.Sprintf("would inject %s into %s", resolvedSource, resolvedTarget), nil
 	}
 
@@ -470,7 +473,7 @@ const (
 	injectEndMarker   = "<!-- dfl:inject:end -->"
 )
 
-func renderInjectedFile(targetContent, sourceContent, sourcePath string) (string, error) {
+func renderInjectedFile(targetContent, sourceContent, sourcePath, resolvedSourcePath string, link bool) (string, error) {
 	base, err := stripManagedInjection(targetContent)
 	if err != nil {
 		return "", err
@@ -478,6 +481,10 @@ func renderInjectedFile(targetContent, sourceContent, sourcePath string) (string
 
 	base = strings.TrimRight(base, "\n")
 	sourceContent = strings.TrimRight(sourceContent, "\n")
+	payload := sourceContent
+	if link {
+		payload = "@" + filepath.Clean(resolvedSourcePath)
+	}
 
 	var b strings.Builder
 	if base != "" {
@@ -486,8 +493,8 @@ func renderInjectedFile(targetContent, sourceContent, sourcePath string) (string
 	}
 	b.WriteString(injectStartMarker(sourcePath))
 	b.WriteString("\n")
-	if sourceContent != "" {
-		b.WriteString(sourceContent)
+	if payload != "" {
+		b.WriteString(payload)
 		b.WriteString("\n")
 	}
 	b.WriteString(injectEndMarker)

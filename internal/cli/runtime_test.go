@@ -175,6 +175,46 @@ func TestRunInjectDryRunPrintsPlannedChange(t *testing.T) {
 	}
 }
 
+func TestRunInjectLinkDryRunPrintsPlannedChange(t *testing.T) {
+	repoRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repoRoot, ".git"), 0o755); err != nil {
+		t.Fatalf("MkdirAll .git: %v", err)
+	}
+	t.Setenv("DFL_ROOT", repoRoot)
+
+	source := filepath.Join(repoRoot, "source.md")
+	target := filepath.Join(t.TempDir(), "target.md")
+	if err := os.WriteFile(source, []byte("injected text\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile source: %v", err)
+	}
+	if err := os.WriteFile(target, []byte("base text\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+
+	app := NewApp()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	app.SetStdout(&stdout)
+	app.SetStderr(&stderr)
+
+	code, err := app.Run([]string{"inject", "--link", "--dry-run", source, target})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("Run returned code %d, want 0", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "Injecting "+source+" into "+target+"...") {
+		t.Fatalf("stdout = %q, want inject step start", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "would inject link") {
+		t.Fatalf("stdout = %q, want dry-run inject link output", stdout.String())
+	}
+}
+
 func TestRunInjectRequiresSourceAndTarget(t *testing.T) {
 	repoRoot := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repoRoot, ".git"), 0o755); err != nil {

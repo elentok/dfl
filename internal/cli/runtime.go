@@ -199,7 +199,8 @@ func (a *App) newCopyCommand() *cobra.Command {
 }
 
 func (a *App) newInjectCommand() *cobra.Command {
-	return &cobra.Command{
+	var link bool
+	cmd := &cobra.Command{
 		Use:   "inject <source-file> <target-file>",
 		Short: "inject",
 		Args:  cobra.ExactArgs(2),
@@ -212,7 +213,7 @@ func (a *App) newInjectCommand() *cobra.Command {
 			if err := ui.StepStart(a.stdoutWriter(), label); err != nil {
 				return err
 			}
-			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Inject(ctx, componentRoot(), args[0], args[1])
+			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Inject(ctx, componentRoot(), args[0], args[1], link)
 			if err != nil {
 				return err
 			}
@@ -220,6 +221,8 @@ func (a *App) newInjectCommand() *cobra.Command {
 			return ui.StepEnd(a.stdoutWriter(), status, message)
 		},
 	}
+	cmd.Flags().BoolVar(&link, "link", false, "inject a reference line (@/absolute/path) instead of file contents")
+	return cmd
 }
 
 func (a *App) newMkdirCommand() *cobra.Command {

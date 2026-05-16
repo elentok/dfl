@@ -179,7 +179,7 @@ func TestInjectAppendsManagedBlock(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target)
+	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target, false)
 	if err != nil {
 		t.Fatalf("Inject returned error: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestInjectReplacesExistingManagedBlock(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target)
+	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target, false)
 	if err != nil {
 		t.Fatalf("Inject returned error: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestInjectDryRunDoesNotModifyTarget(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Inject(runtimectx.Context{DryRun: true}, tempDir, source, target)
+	status, message, err := Runner{}.Inject(runtimectx.Context{DryRun: true}, tempDir, source, target, false)
 	if err != nil {
 		t.Fatalf("Inject returned error: %v", err)
 	}
@@ -268,6 +268,93 @@ func TestInjectDryRunDoesNotModifyTarget(t *testing.T) {
 	}
 	if string(data) != "base text\n" {
 		t.Fatalf("target = %q, want unchanged", string(data))
+	}
+}
+
+func TestInjectLinkModeWritesReferencePayload(t *testing.T) {
+	tempDir := t.TempDir()
+	source := filepath.Join(tempDir, "source with spaces.md")
+	target := filepath.Join(tempDir, "target.md")
+	if err := os.WriteFile(source, []byte("ignored in link mode\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile source: %v", err)
+	}
+	if err := os.WriteFile(target, []byte("base text\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+
+	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target, true)
+	if err != nil {
+		t.Fatalf("Inject returned error: %v", err)
+	}
+	if status != runtimectx.StatusSuccess {
+		t.Fatalf("status = %q, want success", status)
+	}
+	if message != "done" {
+		t.Fatalf("message = %q, want done", message)
+	}
+
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("ReadFile target: %v", err)
+	}
+
+	want := "base text\n\n<!-- dfl:inject:start source=" + source + " -->\n@" + source + "\n<!-- dfl:inject:end -->\n"
+	if string(data) != want {
+		t.Fatalf("target = %q, want %q", string(data), want)
+	}
+}
+
+func TestInjectDryRunLinkModeMessage(t *testing.T) {
+	tempDir := t.TempDir()
+	source := filepath.Join(tempDir, "source.md")
+	target := filepath.Join(tempDir, "target.md")
+	if err := os.WriteFile(source, []byte("injected text\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile source: %v", err)
+	}
+	if err := os.WriteFile(target, []byte("base text\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+
+	status, message, err := Runner{}.Inject(runtimectx.Context{DryRun: true}, tempDir, source, target, true)
+	if err != nil {
+		t.Fatalf("Inject returned error: %v", err)
+	}
+	if status != runtimectx.StatusSuccess {
+		t.Fatalf("status = %q, want success", status)
+	}
+	if !strings.Contains(message, "would inject link") {
+		t.Fatalf("message = %q, want dry-run link output", message)
+	}
+}
+
+func TestInjectSwitchesBetweenContentAndLinkModes(t *testing.T) {
+	tempDir := t.TempDir()
+	source := filepath.Join(tempDir, "source.md")
+	target := filepath.Join(tempDir, "target.md")
+	if err := os.WriteFile(source, []byte("source content\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile source: %v", err)
+	}
+	if err := os.WriteFile(target, []byte("base text\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+
+	if _, _, err := (Runner{}).Inject(runtimectx.Context{}, tempDir, source, target, false); err != nil {
+		t.Fatalf("Inject (content) returned error: %v", err)
+	}
+	if _, _, err := (Runner{}).Inject(runtimectx.Context{}, tempDir, source, target, true); err != nil {
+		t.Fatalf("Inject (link) returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("ReadFile target: %v", err)
+	}
+	output := string(data)
+	if strings.Contains(output, "source content\n") {
+		t.Fatalf("target = %q, want content payload removed after switch to link", output)
+	}
+	if !strings.Contains(output, "@"+source+"\n") {
+		t.Fatalf("target = %q, want link payload after switch", output)
 	}
 }
 
