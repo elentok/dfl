@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.7] - 2026-05-16
+
+- Added `--link` to `dfl inject`, allowing `dfl inject --link <source-file> <target-file>` to
+  inject a managed `@/absolute/path` reference line instead of injecting full file contents.
+
 ## [0.2.6] - 2026-05-09
 
 - `dfl pkg github install` now tries additional GitHub release asset filename variants (including
