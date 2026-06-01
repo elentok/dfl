@@ -3,6 +3,7 @@ package runtimecmd
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"dfl/internal/jsonmerge"
 	runtimectx "dfl/internal/runtime"
 	"dfl/internal/setuplog"
 	"dfl/internal/ui"
@@ -347,6 +349,56 @@ func (o Runner) Inject(ctx runtimectx.Context, componentRoot, source, target str
 		return runtimectx.StatusFailed, "", err
 	}
 	if err := os.WriteFile(resolvedTarget, []byte(rendered), targetMode(resolvedTarget, resolvedSource)); err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	return runtimectx.StatusSuccess, "done", nil
+}
+
+func (o Runner) MergeJSON(ctx runtimectx.Context, componentRoot string, inputs []string, output string) (runtimectx.ResultStatus, string, error) {
+	resolvedOutput, err := expandPath(output)
+	if err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	values := make([]any, 0, len(inputs))
+	for _, input := range inputs {
+		resolvedInput, _, err := resolvePaths(componentRoot, input, output)
+		if err != nil {
+			return runtimectx.StatusFailed, "", err
+		}
+		data, err := os.ReadFile(resolvedInput)
+		if err != nil {
+			return runtimectx.StatusFailed, "", err
+		}
+		var value any
+		if err := json.Unmarshal(data, &value); err != nil {
+			return runtimectx.StatusFailed, "", fmt.Errorf("parsing %s: %w", resolvedInput, err)
+		}
+		values = append(values, value)
+	}
+
+	rendered, err := jsonmerge.Marshal(jsonmerge.Merge(values...))
+	if err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+
+	current, err := os.ReadFile(resolvedOutput)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return runtimectx.StatusFailed, "", err
+	}
+	if bytes.Equal(current, rendered) {
+		return runtimectx.StatusSkipped, "already up to date", nil
+	}
+
+	if ctx.DryRun {
+		return runtimectx.StatusSuccess, fmt.Sprintf("would merge %d files into %s", len(inputs), resolvedOutput), nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(resolvedOutput), 0o755); err != nil {
+		return runtimectx.StatusFailed, "", err
+	}
+	if err := os.WriteFile(resolvedOutput, rendered, 0o644); err != nil {
 		return runtimectx.StatusFailed, "", err
 	}
 

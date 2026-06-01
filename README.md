@@ -98,6 +98,7 @@ dfl symlink tmux.conf ~/.tmux.conf
 dfl copy config.toml ~/.config/myapp/config.toml
 dfl inject core/ai/AGENTS.md ~/.codex/AGENTS.md
 dfl inject --link core/ai/AGENTS.md ~/.codex/AGENTS.md
+dfl merge-json ~/.claude/settings.json settings.base.json ~/.claude/settings.json
 dfl mkdir ~/.config/myapp
 dfl backup ~/.gitconfig
 dfl shell "Reload config" -- sh -c 'echo hello'
@@ -109,6 +110,12 @@ These commands are designed to produce consistent step-style output and to suppo
 HTML comment markers, and replaces that managed block on rerun instead of duplicating it.
 Use `dfl inject --link <source-file> <target-file>` to inject a reference payload line in the form
 `@/absolute/path/to/source` instead of file contents.
+
+`dfl merge-json <input...> <output>` deep-merges two or more JSON files into the output file (the
+last argument). Objects merge recursively, arrays are unioned (deduplicated, first-seen order), and
+on scalar conflicts the later input wins. The output path may be one of the inputs for an in-place
+merge, e.g. `dfl merge-json ~/.claude/settings.json settings.base.json ~/.claude/settings.json`
+keeps runtime-written keys while letting the managed base win the keys it declares.
 
 GitHub package installs use the repository basename as the binary name and install into
 `~/.local/bin`. For example:

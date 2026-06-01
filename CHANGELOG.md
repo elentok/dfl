@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.8] - 2026-06-01
+
+- Added `dfl merge-json <input...> <output>` for deep-merging two or more JSON files into the output
+  file (the last argument). Objects merge recursively, arrays are unioned (deduplicated, first-seen
+  order), and on scalar conflicts the later input wins. The output may be one of the inputs for an
+  in-place merge, supports `--dry-run`, and reports `already up to date` when the result is
+  unchanged.
+
 ## [0.2.7] - 2026-05-16
 
 - Added `--link` to `dfl inject`, allowing `dfl inject --link <source-file> <target-file>` to

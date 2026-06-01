@@ -225,6 +225,32 @@ func (a *App) newInjectCommand() *cobra.Command {
 	return cmd
 }
 
+func (a *App) newMergeJSONCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "merge-json <input...> <output>",
+		Short: "Deep-merge JSON files into an output file",
+		Args:  cobra.MinimumNArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, err := a.runtimeContext()
+			if err != nil {
+				return err
+			}
+			inputs := args[:len(args)-1]
+			output := args[len(args)-1]
+			label := fmt.Sprintf("Merging %d files into %s...", len(inputs), output)
+			if err := ui.StepStart(a.stdoutWriter(), label); err != nil {
+				return err
+			}
+			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).MergeJSON(ctx, componentRoot(), inputs, output)
+			if err != nil {
+				return err
+			}
+			logStepResult(label, status, message, nil)
+			return ui.StepEnd(a.stdoutWriter(), status, message)
+		},
+	}
+}
+
 func (a *App) newMkdirCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "mkdir <path>",

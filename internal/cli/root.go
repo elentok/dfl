@@ -32,6 +32,7 @@ func (a *App) newRootCommand() *cobra.Command {
 		a.newSymlinkCommand(),
 		a.newCopyCommand(),
 		a.newInjectCommand(),
+		a.newMergeJSONCommand(),
 		a.newMkdirCommand(),
 		a.newBackupCommand(),
 		a.newRepoRootCommand(),
