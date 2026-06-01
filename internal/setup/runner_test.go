@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 )
 
 func TestRunExecutesRepoSetupScriptFromRepoRoot(t *testing.T) {
@@ -26,7 +26,7 @@ func TestRunExecutesRepoSetupScriptFromRepoRoot(t *testing.T) {
 	var stderr bytes.Buffer
 	runner := Runner{Stdout: &stdout, Stderr: &stderr}
 
-	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot})
+	code, err := runner.Run(runctx.Context{RepoRoot: repoRoot})
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestRunRespectsSetupShebang(t *testing.T) {
 	}
 
 	runner := Runner{}
-	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot})
+	code, err := runner.Run(runctx.Context{RepoRoot: repoRoot})
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestRunSetsSetupEnvironment(t *testing.T) {
 	}
 
 	runner := Runner{}
-	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot, DryRun: true})
+	code, err := runner.Run(runctx.Context{RepoRoot: repoRoot, DryRun: true})
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
@@ -164,7 +164,7 @@ esac
 	var stderr bytes.Buffer
 	runner := Runner{Stdout: &stdout, Stderr: &stderr}
 
-	code, err := runner.Run(runtimectx.Context{RepoRoot: repoRoot})
+	code, err := runner.Run(runctx.Context{RepoRoot: repoRoot})
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}

@@ -7,9 +7,9 @@ import (
 	"os"
 	"os/exec"
 
+	"dfl/internal/actions"
 	"dfl/internal/components"
-	runtimectx "dfl/internal/runtime"
-	"dfl/internal/runtimecmd"
+	"dfl/internal/runctx"
 	"dfl/internal/setuplog"
 	"dfl/internal/ui"
 )
@@ -19,7 +19,7 @@ type Runner struct {
 	Stderr io.Writer
 }
 
-func (r Runner) Install(ctx runtimectx.Context, names []string) (int, error) {
+func (r Runner) Install(ctx runctx.Context, names []string) (int, error) {
 	if len(names) == 0 {
 		return 2, errors.New("install requires at least one component")
 	}
@@ -75,14 +75,14 @@ func (r Runner) Install(ctx runtimectx.Context, names []string) (int, error) {
 	return 0, nil
 }
 
-func (r Runner) installComponent(ctx runtimectx.Context, component components.Component) error {
+func (r Runner) installComponent(ctx runctx.Context, component components.Component) error {
 	if component.InstallerType != components.InstallerScript {
 		return fmt.Errorf("unsupported installer type %q", component.InstallerType)
 	}
 	return r.runScript(ctx, component)
 }
 
-func (r Runner) runScript(ctx runtimectx.Context, component components.Component) error {
+func (r Runner) runScript(ctx runctx.Context, component components.Component) error {
 	cmd := exec.Command(component.Entrypoint)
 	cmd.Dir = component.Root
 	cmd.Stdout = r.Stdout
@@ -91,8 +91,8 @@ func (r Runner) runScript(ctx runtimectx.Context, component components.Component
 	return cmd.Run()
 }
 
-func scriptEnv(ctx runtimectx.Context, component components.Component) []string {
-	env := runtimecmd.WithExecutableOnPath(os.Environ())
+func scriptEnv(ctx runctx.Context, component components.Component) []string {
+	env := actions.WithExecutableOnPath(os.Environ())
 	env = append(env, "DFL_ROOT="+ctx.RepoRoot)
 	env = append(env, "DFL_COMPONENT_ROOT="+component.Root)
 	env = append(env, "DOTF="+ctx.RepoRoot)

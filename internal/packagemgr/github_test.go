@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 )
 
 func TestDownloadBinaryURLUsesLatestWhenVersionMissing(t *testing.T) {
@@ -86,7 +86,7 @@ func TestGitHubInstallCreatesVersionedBinaryAndSymlink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
-	if result.Status != runtimectx.StatusSuccess {
+	if result.Status != runctx.StatusSuccess {
 		t.Fatalf("Status = %q, want success", result.Status)
 	}
 	if result.Path != linkPath {
@@ -139,7 +139,7 @@ func TestGitHubInstallSkipsWhenRequestedVersionAlreadyInstalled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
-	if result.Status != runtimectx.StatusSkipped {
+	if result.Status != runctx.StatusSkipped {
 		t.Fatalf("Status = %q, want skipped", result.Status)
 	}
 	if !strings.Contains(result.Message, "already installed") {
@@ -176,7 +176,7 @@ func TestGitHubInstallSkipsWhenLatestVersionAlreadyInstalled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
-	if result.Status != runtimectx.StatusSkipped {
+	if result.Status != runctx.StatusSkipped {
 		t.Fatalf("Status = %q, want skipped", result.Status)
 	}
 	if result.Message != "latest version already installed" {
@@ -209,7 +209,7 @@ func TestGitHubInstallReplacesPlainFileWithManagedSymlink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
-	if result.Status != runtimectx.StatusSuccess {
+	if result.Status != runctx.StatusSuccess {
 		t.Fatalf("Status = %q, want success", result.Status)
 	}
 
@@ -293,7 +293,7 @@ func TestGitHubInstallFallsBackToVersionedAssetName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
-	if result.Status != runtimectx.StatusSuccess {
+	if result.Status != runctx.StatusSuccess {
 		t.Fatalf("Status = %q, want success", result.Status)
 	}
 	if _, err := os.Stat(managedBinaryPath(linkPath, "v1.0.4")); err != nil {

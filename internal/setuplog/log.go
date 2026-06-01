@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 	"dfl/internal/ui"
 )
 
@@ -22,17 +22,17 @@ const (
 )
 
 type Record struct {
-	Type    string                  `json:"type"`
-	Text    string                  `json:"text,omitempty"`
-	Status  runtimectx.ResultStatus `json:"status,omitempty"`
-	Message string                  `json:"message,omitempty"`
-	Output  string                  `json:"output,omitempty"`
+	Type    string              `json:"type"`
+	Text    string              `json:"text,omitempty"`
+	Status  runctx.ResultStatus `json:"status,omitempty"`
+	Message string              `json:"message,omitempty"`
+	Output  string              `json:"output,omitempty"`
 }
 
 type Step struct {
 	IsHeader bool
 	Text     string
-	Status   runtimectx.ResultStatus
+	Status   runctx.ResultStatus
 	Message  string
 	Output   string
 }
@@ -57,7 +57,7 @@ func AppendStart(path, text string) error {
 	})
 }
 
-func AppendEnd(path string, status runtimectx.ResultStatus, message string) error {
+func AppendEnd(path string, status runctx.ResultStatus, message string) error {
 	if path == "" {
 		return nil
 	}
@@ -68,7 +68,7 @@ func AppendEnd(path string, status runtimectx.ResultStatus, message string) erro
 	})
 }
 
-func AppendResult(path, text string, status runtimectx.ResultStatus, message, output string) error {
+func AppendResult(path, text string, status runctx.ResultStatus, message, output string) error {
 	if path == "" || text == "" {
 		return nil
 	}
@@ -199,7 +199,7 @@ func RenderSummary(w io.Writer, steps []Step) error {
 		if err := ui.StepEndWithIndent(w, step.Status, fmt.Sprintf("%s... %s", step.Text, message), summaryIndent); err != nil {
 			return err
 		}
-		if step.Status == runtimectx.StatusFailed && strings.TrimSpace(step.Output) != "" {
+		if step.Status == runctx.StatusFailed && strings.TrimSpace(step.Output) != "" {
 			if _, err := fmt.Fprintln(w); err != nil {
 				return err
 			}
@@ -212,7 +212,7 @@ func RenderSummary(w io.Writer, steps []Step) error {
 				return err
 			}
 		}
-		if step.Status == runtimectx.StatusFailed {
+		if step.Status == runctx.StatusFailed {
 			failedCount++
 		}
 	}
@@ -221,10 +221,10 @@ func RenderSummary(w io.Writer, steps []Step) error {
 		return err
 	}
 	if failedCount == 0 {
-		return ui.StepEndWithIndent(w, runtimectx.StatusSuccess, "dfl setup completed successfully", "")
+		return ui.StepEndWithIndent(w, runctx.StatusSuccess, "dfl setup completed successfully", "")
 	}
 
-	return ui.StepEndWithIndent(w, runtimectx.StatusFailed, fmt.Sprintf("dfl setup failed: %d of %d steps failed", failedCount, stepCount), "")
+	return ui.StepEndWithIndent(w, runctx.StatusFailed, fmt.Sprintf("dfl setup failed: %d of %d steps failed", failedCount, stepCount), "")
 }
 
 func summarizeOutput(output string) []string {

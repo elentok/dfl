@@ -1,4 +1,4 @@
-package runtimecmd
+package actions
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 )
 
 func TestMergeJSONWritesUnionedResult(t *testing.T) {
@@ -17,11 +17,11 @@ func TestMergeJSONWritesUnionedResult(t *testing.T) {
 	b := filepath.Join(dir, "b.json")
 	out := filepath.Join(dir, "out.json")
 
-	status, message, err := Runner{}.MergeJSON(runtimectx.Context{}, dir, []string{a, b}, out)
+	status, message, err := Runner{}.MergeJSON(runctx.Context{}, dir, []string{a, b}, out)
 	if err != nil {
 		t.Fatalf("MergeJSON returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess || message != "done" {
+	if status != runctx.StatusSuccess || message != "done" {
 		t.Fatalf("status/message = %q/%q, want success/done", status, message)
 	}
 
@@ -43,11 +43,11 @@ func TestMergeJSONInPlaceOutputEqualsInput(t *testing.T) {
 	base := filepath.Join(dir, "base.json")
 
 	// live first, base last so base wins on scalar; output overlaps first input.
-	status, _, err := Runner{}.MergeJSON(runtimectx.Context{}, dir, []string{live, base}, live)
+	status, _, err := Runner{}.MergeJSON(runctx.Context{}, dir, []string{live, base}, live)
 	if err != nil {
 		t.Fatalf("MergeJSON returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 
@@ -72,15 +72,15 @@ func TestMergeJSONSkipsWhenUnchanged(t *testing.T) {
 	b := filepath.Join(dir, "b.json")
 	out := filepath.Join(dir, "settings.json")
 
-	if _, _, err := (Runner{}).MergeJSON(runtimectx.Context{}, dir, []string{a, b}, out); err != nil {
+	if _, _, err := (Runner{}).MergeJSON(runctx.Context{}, dir, []string{a, b}, out); err != nil {
 		t.Fatalf("first MergeJSON error: %v", err)
 	}
 
-	status, message, err := Runner{}.MergeJSON(runtimectx.Context{}, dir, []string{a, b}, out)
+	status, message, err := Runner{}.MergeJSON(runctx.Context{}, dir, []string{a, b}, out)
 	if err != nil {
 		t.Fatalf("second MergeJSON error: %v", err)
 	}
-	if status != runtimectx.StatusSkipped || message != "already up to date" {
+	if status != runctx.StatusSkipped || message != "already up to date" {
 		t.Fatalf("status/message = %q/%q, want skipped/already up to date", status, message)
 	}
 }
@@ -93,11 +93,11 @@ func TestMergeJSONDryRunDoesNotWrite(t *testing.T) {
 	b := filepath.Join(dir, "b.json")
 	out := filepath.Join(dir, "out.json")
 
-	status, message, err := Runner{}.MergeJSON(runtimectx.Context{DryRun: true}, dir, []string{a, b}, out)
+	status, message, err := Runner{}.MergeJSON(runctx.Context{DryRun: true}, dir, []string{a, b}, out)
 	if err != nil {
 		t.Fatalf("MergeJSON returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if !strings.Contains(message, "would merge 2 files into") {
@@ -113,11 +113,11 @@ func TestMergeJSONErrorsOnMissingInput(t *testing.T) {
 	writeFile(t, dir, "a.json", `{"a":1}`)
 	a := filepath.Join(dir, "a.json")
 
-	status, _, err := Runner{}.MergeJSON(runtimectx.Context{}, dir, []string{a, filepath.Join(dir, "missing.json")}, filepath.Join(dir, "out.json"))
+	status, _, err := Runner{}.MergeJSON(runctx.Context{}, dir, []string{a, filepath.Join(dir, "missing.json")}, filepath.Join(dir, "out.json"))
 	if err == nil {
 		t.Fatal("expected error for missing input")
 	}
-	if status != runtimectx.StatusFailed {
+	if status != runctx.StatusFailed {
 		t.Fatalf("status = %q, want failed", status)
 	}
 }
@@ -129,11 +129,11 @@ func TestMergeJSONErrorsOnInvalidJSON(t *testing.T) {
 	a := filepath.Join(dir, "a.json")
 	b := filepath.Join(dir, "b.json")
 
-	status, _, err := Runner{}.MergeJSON(runtimectx.Context{}, dir, []string{a, b}, filepath.Join(dir, "out.json"))
+	status, _, err := Runner{}.MergeJSON(runctx.Context{}, dir, []string{a, b}, filepath.Join(dir, "out.json"))
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
-	if status != runtimectx.StatusFailed {
+	if status != runctx.StatusFailed {
 		t.Fatalf("status = %q, want failed", status)
 	}
 	if !strings.Contains(err.Error(), "parsing") {

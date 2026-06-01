@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	runtimectx "dfl/internal/runtime"
-	"dfl/internal/runtimecmd"
+	"dfl/internal/actions"
+	"dfl/internal/runctx"
 	"dfl/internal/ui"
 )
 
@@ -25,7 +25,7 @@ func (u Updater) Run(repoOverride string) (int, error) {
 	installer := Installer{DryRun: u.DryRun}
 
 	var installedPath string
-	err := ui.Step(u.stdout(), "Installing dfl", func() (runtimectx.ResultStatus, string, error) {
+	err := ui.Step(u.stdout(), "Installing dfl", func() (runctx.ResultStatus, string, error) {
 		result, err := installer.Install("", "")
 		if err != nil {
 			return "", "", err
@@ -42,23 +42,23 @@ func (u Updater) Run(repoOverride string) (int, error) {
 		return 1, err
 	}
 
-	err = ui.Step(u.stdout(), "Updating dotfiles repo", func() (runtimectx.ResultStatus, string, error) {
+	err = ui.Step(u.stdout(), "Updating dotfiles repo", func() (runctx.ResultStatus, string, error) {
 		if u.DryRun {
-			return runtimectx.StatusSuccess, fmt.Sprintf("would update %s", repoRoot), nil
+			return runctx.StatusSuccess, fmt.Sprintf("would update %s", repoRoot), nil
 		}
 
 		if err := u.updateRepo(repoRoot); err != nil {
 			return "", "", err
 		}
-		return runtimectx.StatusSuccess, fmt.Sprintf("updated %s", repoRoot), nil
+		return runctx.StatusSuccess, fmt.Sprintf("updated %s", repoRoot), nil
 	})
 	if err != nil {
 		return 1, err
 	}
 
-	err = ui.Step(u.stdout(), "Running dotfiles setup", func() (runtimectx.ResultStatus, string, error) {
+	err = ui.Step(u.stdout(), "Running dotfiles setup", func() (runctx.ResultStatus, string, error) {
 		if u.DryRun {
-			return runtimectx.StatusSuccess, fmt.Sprintf("would run dfl setup --repo %s --dry-run", repoRoot), nil
+			return runctx.StatusSuccess, fmt.Sprintf("would run dfl setup --repo %s --dry-run", repoRoot), nil
 		}
 
 		setupBinary, err := setupBinaryPath(installedPath)
@@ -74,7 +74,7 @@ func (u Updater) Run(repoOverride string) (int, error) {
 			return "", "", err
 		}
 
-		return runtimectx.StatusSuccess, fmt.Sprintf("ran setup for %s", repoRoot), nil
+		return runctx.StatusSuccess, fmt.Sprintf("ran setup for %s", repoRoot), nil
 	})
 	if err != nil {
 		return 1, err
@@ -88,7 +88,7 @@ func resolveRepoRoot(repoOverride string) (string, error) {
 		return filepath.Abs(repoOverride)
 	}
 
-	if ctx, err := runtimectx.NewContext(""); err == nil {
+	if ctx, err := runctx.NewContext(""); err == nil {
 		return ctx.RepoRoot, nil
 	}
 
@@ -147,7 +147,7 @@ func (u Updater) updateRepo(repoRoot string) error {
 		return err
 	}
 
-	reply, askErr := runtimecmd.Runner{Stdin: u.stdin(), Stderr: u.stderr()}.Ask("Local changes would be overwritten by pull. Stash them before pulling?", "n")
+	reply, askErr := actions.Runner{Stdin: u.stdin(), Stderr: u.stderr()}.Ask("Local changes would be overwritten by pull. Stash them before pulling?", "n")
 	if askErr != nil {
 		return askErr
 	}

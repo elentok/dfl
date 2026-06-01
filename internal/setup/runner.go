@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	runtimectx "dfl/internal/runtime"
-	"dfl/internal/runtimecmd"
+	"dfl/internal/actions"
+	"dfl/internal/runctx"
 	"dfl/internal/setuplog"
 )
 
@@ -16,7 +16,7 @@ type Runner struct {
 	Stderr io.Writer
 }
 
-func (r Runner) Run(ctx runtimectx.Context) (int, error) {
+func (r Runner) Run(ctx runctx.Context) (int, error) {
 	logFile, err := os.CreateTemp("", "dfl-setup-*.jsonl")
 	if err != nil {
 		return 1, err
@@ -45,8 +45,8 @@ func (r Runner) Run(ctx runtimectx.Context) (int, error) {
 	return 0, nil
 }
 
-func setupEnv(ctx runtimectx.Context, logPath string) []string {
-	env := runtimecmd.WithExecutableOnPath(os.Environ())
+func setupEnv(ctx runctx.Context, logPath string) []string {
+	env := actions.WithExecutableOnPath(os.Environ())
 	env = append(env, "DFL_ROOT="+ctx.RepoRoot)
 	env = append(env, "DFL_COMPONENT_ROOT="+filepath.Join(ctx.RepoRoot, "core"))
 	env = append(env, "DOTF="+ctx.RepoRoot)

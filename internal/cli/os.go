@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"dfl/internal/runtime"
+	"dfl/internal/runctx"
 
 	"github.com/spf13/cobra"
 )
@@ -17,11 +17,11 @@ func (a *App) newOSCommand() *cobra.Command {
 
 	for _, item := range []struct {
 		use string
-		os  runtime.OSType
+		os  runctx.OSType
 	}{
-		{use: "is-mac", os: runtime.OSMac},
-		{use: "is-linux", os: runtime.OSLinux},
-		{use: "is-wsl", os: runtime.OSWSL},
+		{use: "is-mac", os: runctx.OSMac},
+		{use: "is-linux", os: runctx.OSLinux},
+		{use: "is-wsl", os: runctx.OSWSL},
 	} {
 		item := item
 		cmd.AddCommand(&cobra.Command{

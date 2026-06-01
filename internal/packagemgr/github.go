@@ -13,13 +13,13 @@ import (
 	"strconv"
 	"strings"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 )
 
 const managedVersionsToKeep = 3
 
 type GitHubInstallResult struct {
-	Status  runtimectx.ResultStatus
+	Status  runctx.ResultStatus
 	Message string
 	Path    string
 	Version string
@@ -54,7 +54,7 @@ func (i GitHubInstaller) Install(version, target string) (GitHubInstallResult, e
 		if err != nil {
 			if i.DryRun {
 				return GitHubInstallResult{
-					Status:  runtimectx.StatusSuccess,
+					Status:  runctx.StatusSuccess,
 					Message: fmt.Sprintf("would install %s latest release to %s", binaryName, linkPath),
 					Path:    linkPath,
 				}, nil
@@ -73,7 +73,7 @@ func (i GitHubInstaller) Install(version, target string) (GitHubInstallResult, e
 			message = "latest version already installed"
 		}
 		return GitHubInstallResult{
-			Status:  runtimectx.StatusSkipped,
+			Status:  runctx.StatusSkipped,
 			Message: message,
 			Path:    linkPath,
 			Version: currentVersion,
@@ -83,7 +83,7 @@ func (i GitHubInstaller) Install(version, target string) (GitHubInstallResult, e
 	versionedPath := managedBinaryPath(linkPath, desiredVersion)
 	if i.DryRun {
 		return GitHubInstallResult{
-			Status:  runtimectx.StatusSuccess,
+			Status:  runctx.StatusSuccess,
 			Message: fmt.Sprintf("would install %s %s to %s", binaryName, desiredVersion, linkPath),
 			Path:    linkPath,
 			Version: desiredVersion,
@@ -128,7 +128,7 @@ func (i GitHubInstaller) Install(version, target string) (GitHubInstallResult, e
 	}
 
 	return GitHubInstallResult{
-		Status:  runtimectx.StatusSuccess,
+		Status:  runctx.StatusSuccess,
 		Message: message,
 		Path:    linkPath,
 		Version: desiredVersion,

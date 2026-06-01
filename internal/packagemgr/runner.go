@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"strings"
 
-	runtimectx "dfl/internal/runtime"
-	"dfl/internal/runtimecmd"
+	"dfl/internal/actions"
+	"dfl/internal/runctx"
 	"dfl/internal/setuplog"
 	"dfl/internal/ui"
 )
@@ -40,7 +40,7 @@ func (OSExecutor) Output(name string, args ...string) ([]byte, error) {
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, &runtimecmd.OutputError{Err: err, Output: strings.TrimSpace(outputWithStderr(output, stderr.String()))}
+		return nil, &actions.OutputError{Err: err, Output: strings.TrimSpace(outputWithStderr(output, stderr.String()))}
 	}
 	return output, nil
 }
@@ -52,7 +52,7 @@ func (OSExecutor) Run(stdout, stderr io.Writer, name string, args ...string) err
 	cmd.Stdout = io.MultiWriter(stdout, &stdoutBuf)
 	cmd.Stderr = io.MultiWriter(stderr, &stderrBuf)
 	if err := cmd.Run(); err != nil {
-		return &runtimecmd.OutputError{
+		return &actions.OutputError{
 			Err:    err,
 			Output: strings.TrimSpace(stdoutBuf.String() + "\n" + stderrBuf.String()),
 		}
@@ -73,7 +73,7 @@ func outputWithStderr(stdout []byte, stderr string) string {
 	}
 }
 
-func (r Runner) Install(ctx runtimectx.Context, manager string, opts InstallOptions) (int, error) {
+func (r Runner) Install(ctx runctx.Context, manager string, opts InstallOptions) (int, error) {
 	if len(opts.Packages) == 0 {
 		return 2, errors.New("install requires at least one package")
 	}
@@ -85,8 +85,8 @@ func (r Runner) Install(ctx runtimectx.Context, manager string, opts InstallOpti
 
 	missing, err := r.findMissing(manager, opts)
 	if err != nil {
-		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runtimectx.StatusFailed, "failed", runtimecmd.OutputFromError(err))
-		if stepErr := ui.StepEnd(r.stdout(), runtimectx.StatusFailed, "failed"); stepErr != nil {
+		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runctx.StatusFailed, "failed", actions.OutputFromError(err))
+		if stepErr := ui.StepEnd(r.stdout(), runctx.StatusFailed, "failed"); stepErr != nil {
 			return 1, stepErr
 		}
 		return 1, err
@@ -94,8 +94,8 @@ func (r Runner) Install(ctx runtimectx.Context, manager string, opts InstallOpti
 
 	if len(missing) == 0 {
 		message := "already installed"
-		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runtimectx.StatusSkipped, message, "")
-		if err := ui.StepEnd(r.stdout(), runtimectx.StatusSkipped, message); err != nil {
+		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runctx.StatusSkipped, message, "")
+		if err := ui.StepEnd(r.stdout(), runctx.StatusSkipped, message); err != nil {
 			return 1, err
 		}
 		return 0, nil
@@ -103,8 +103,8 @@ func (r Runner) Install(ctx runtimectx.Context, manager string, opts InstallOpti
 
 	if ctx.DryRun {
 		message := dryRunDetail(manager, missing, opts)
-		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runtimectx.StatusSuccess, message, "")
-		if err := ui.StepEnd(r.stdout(), runtimectx.StatusSuccess, message); err != nil {
+		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runctx.StatusSuccess, message, "")
+		if err := ui.StepEnd(r.stdout(), runctx.StatusSuccess, message); err != nil {
 			return 1, err
 		}
 		return 0, nil
@@ -112,8 +112,8 @@ func (r Runner) Install(ctx runtimectx.Context, manager string, opts InstallOpti
 
 	if manager == "brew" && opts.Tap != "" {
 		if err := r.ensureBrewTap(opts.Tap); err != nil {
-			_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runtimectx.StatusFailed, "failed", runtimecmd.OutputFromError(err))
-			if stepErr := ui.StepEnd(r.stdout(), runtimectx.StatusFailed, "failed"); stepErr != nil {
+			_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runctx.StatusFailed, "failed", actions.OutputFromError(err))
+			if stepErr := ui.StepEnd(r.stdout(), runctx.StatusFailed, "failed"); stepErr != nil {
 				return 1, stepErr
 			}
 			return 1, err
@@ -121,16 +121,16 @@ func (r Runner) Install(ctx runtimectx.Context, manager string, opts InstallOpti
 	}
 
 	if err := r.installMissing(manager, missing, opts); err != nil {
-		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runtimectx.StatusFailed, "failed", runtimecmd.OutputFromError(err))
-		if stepErr := ui.StepEnd(r.stdout(), runtimectx.StatusFailed, "failed"); stepErr != nil {
+		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runctx.StatusFailed, "failed", actions.OutputFromError(err))
+		if stepErr := ui.StepEnd(r.stdout(), runctx.StatusFailed, "failed"); stepErr != nil {
 			return 1, stepErr
 		}
 		return 1, err
 	}
 
 	message := installedDetail(manager, missing, opts)
-	_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runtimectx.StatusSuccess, message, "")
-	if err := ui.StepEnd(r.stdout(), runtimectx.StatusSuccess, message); err != nil {
+	_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runctx.StatusSuccess, message, "")
+	if err := ui.StepEnd(r.stdout(), runctx.StatusSuccess, message); err != nil {
 		return 1, err
 	}
 	return 0, nil

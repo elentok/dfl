@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 )
 
 func TestReadPairsStepStartAndEnd(t *testing.T) {
@@ -15,7 +15,7 @@ func TestReadPairsStepStartAndEnd(t *testing.T) {
 	if err := AppendStart(path, "create directory X"); err != nil {
 		t.Fatalf("AppendStart: %v", err)
 	}
-	if err := AppendEnd(path, runtimectx.StatusSkipped, "already exists"); err != nil {
+	if err := AppendEnd(path, runctx.StatusSkipped, "already exists"); err != nil {
 		t.Fatalf("AppendEnd: %v", err)
 	}
 
@@ -26,7 +26,7 @@ func TestReadPairsStepStartAndEnd(t *testing.T) {
 	if len(steps) != 1 {
 		t.Fatalf("len(steps) = %d, want 1", len(steps))
 	}
-	if steps[0].Text != "create directory X" || steps[0].Status != runtimectx.StatusSkipped || steps[0].Message != "already exists" {
+	if steps[0].Text != "create directory X" || steps[0].Status != runctx.StatusSkipped || steps[0].Message != "already exists" {
 		t.Fatalf("step = %#v", steps[0])
 	}
 }
@@ -34,7 +34,7 @@ func TestReadPairsStepStartAndEnd(t *testing.T) {
 func TestReadIncludesAtomicStepResults(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "setup.jsonl")
 
-	if err := AppendResult(path, "git-clone this repo", runtimectx.StatusFailed, "failed", "stdout\nstderr\n"); err != nil {
+	if err := AppendResult(path, "git-clone this repo", runctx.StatusFailed, "failed", "stdout\nstderr\n"); err != nil {
 		t.Fatalf("AppendResult: %v", err)
 	}
 
@@ -74,8 +74,8 @@ func TestRenderSummaryIncludesFailedOutput(t *testing.T) {
 
 	err := RenderSummary(&out, []Step{
 		{IsHeader: true, Text: "Installing fish (core/script)"},
-		{Text: "create directory X", Status: runtimectx.StatusSkipped, Message: "already exists"},
-		{Text: "git-clone this repo", Status: runtimectx.StatusFailed, Message: "failed", Output: "line 1\nline 2\n"},
+		{Text: "create directory X", Status: runctx.StatusSkipped, Message: "already exists"},
+		{Text: "git-clone this repo", Status: runctx.StatusFailed, Message: "failed", Output: "line 1\nline 2\n"},
 	})
 	if err != nil {
 		t.Fatalf("RenderSummary: %v", err)
@@ -109,8 +109,8 @@ func TestRenderSummaryIncludesSuccessFinalLine(t *testing.T) {
 	var out bytes.Buffer
 
 	err := RenderSummary(&out, []Step{
-		{Text: "create directory X", Status: runtimectx.StatusSkipped, Message: "already exists"},
-		{Text: "create directory Y", Status: runtimectx.StatusSuccess, Message: "done"},
+		{Text: "create directory X", Status: runctx.StatusSkipped, Message: "already exists"},
+		{Text: "create directory Y", Status: runctx.StatusSuccess, Message: "done"},
 	})
 	if err != nil {
 		t.Fatalf("RenderSummary: %v", err)

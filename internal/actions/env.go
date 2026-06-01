@@ -1,4 +1,4 @@
-package runtimecmd
+package actions
 
 import (
 	"os"

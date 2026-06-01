@@ -1,4 +1,4 @@
-package runtimecmd
+package actions
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 )
 
 func TestHasCommandFindsExecutable(t *testing.T) {
@@ -47,7 +47,7 @@ func TestShellDryRunSkipsExecution(t *testing.T) {
 	var stdout bytes.Buffer
 	ops := Runner{Stdout: &stdout}
 
-	code, err := ops.Shell(runtimectx.Context{DryRun: true}, "demo", []string{"echo", "hi"})
+	code, err := ops.Shell(runctx.Context{DryRun: true}, "demo", []string{"echo", "hi"})
 	if err != nil {
 		t.Fatalf("Shell returned error: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestShellPassesParentEnvironment(t *testing.T) {
 
 	var stdout bytes.Buffer
 	ops := Runner{Stdout: &stdout}
-	ctx := runtimectx.Context{}
+	ctx := runctx.Context{}
 
 	code, err := ops.Shell(ctx, "env", []string{
 		"sh",
@@ -103,11 +103,11 @@ func TestSymlinkSkipsWhenAlreadyCorrect(t *testing.T) {
 		t.Fatalf("Symlink: %v", err)
 	}
 
-	status, message, err := Runner{}.Symlink(runtimectx.Context{}, tempDir, source, target)
+	status, message, err := Runner{}.Symlink(runctx.Context{}, tempDir, source, target)
 	if err != nil {
 		t.Fatalf("Symlink returned error: %v", err)
 	}
-	if status != runtimectx.StatusSkipped {
+	if status != runctx.StatusSkipped {
 		t.Fatalf("status = %q, want skipped", status)
 	}
 	if message != "already exists" {
@@ -125,7 +125,7 @@ func TestBackupUsesTimestampWhenDefaultBackupExists(t *testing.T) {
 		t.Fatalf("WriteFile backup: %v", err)
 	}
 
-	backupPath, err := Runner{}.Backup(runtimectx.Context{}, target)
+	backupPath, err := Runner{}.Backup(runctx.Context{}, target)
 	if err != nil {
 		t.Fatalf("Backup returned error: %v", err)
 	}
@@ -148,11 +148,11 @@ func TestCopyDryRunDoesNotModifyTarget(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Copy(runtimectx.Context{DryRun: true}, tempDir, source, target)
+	status, message, err := Runner{}.Copy(runctx.Context{DryRun: true}, tempDir, source, target)
 	if err != nil {
 		t.Fatalf("Copy returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if !strings.Contains(message, "would copy") {
@@ -179,11 +179,11 @@ func TestInjectAppendsManagedBlock(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target, false)
+	status, message, err := Runner{}.Inject(runctx.Context{}, tempDir, source, target, false)
 	if err != nil {
 		t.Fatalf("Inject returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if message != "done" {
@@ -213,11 +213,11 @@ func TestInjectReplacesExistingManagedBlock(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target, false)
+	status, message, err := Runner{}.Inject(runctx.Context{}, tempDir, source, target, false)
 	if err != nil {
 		t.Fatalf("Inject returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if message != "done" {
@@ -251,11 +251,11 @@ func TestInjectDryRunDoesNotModifyTarget(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Inject(runtimectx.Context{DryRun: true}, tempDir, source, target, false)
+	status, message, err := Runner{}.Inject(runctx.Context{DryRun: true}, tempDir, source, target, false)
 	if err != nil {
 		t.Fatalf("Inject returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if !strings.Contains(message, "would inject") {
@@ -282,11 +282,11 @@ func TestInjectLinkModeWritesReferencePayload(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Inject(runtimectx.Context{}, tempDir, source, target, true)
+	status, message, err := Runner{}.Inject(runctx.Context{}, tempDir, source, target, true)
 	if err != nil {
 		t.Fatalf("Inject returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if message != "done" {
@@ -315,11 +315,11 @@ func TestInjectDryRunLinkModeMessage(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Inject(runtimectx.Context{DryRun: true}, tempDir, source, target, true)
+	status, message, err := Runner{}.Inject(runctx.Context{DryRun: true}, tempDir, source, target, true)
 	if err != nil {
 		t.Fatalf("Inject returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if !strings.Contains(message, "would inject link") {
@@ -338,10 +338,10 @@ func TestInjectSwitchesBetweenContentAndLinkModes(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	if _, _, err := (Runner{}).Inject(runtimectx.Context{}, tempDir, source, target, false); err != nil {
+	if _, _, err := (Runner{}).Inject(runctx.Context{}, tempDir, source, target, false); err != nil {
 		t.Fatalf("Inject (content) returned error: %v", err)
 	}
-	if _, _, err := (Runner{}).Inject(runtimectx.Context{}, tempDir, source, target, true); err != nil {
+	if _, _, err := (Runner{}).Inject(runctx.Context{}, tempDir, source, target, true); err != nil {
 		t.Fatalf("Inject (link) returned error: %v", err)
 	}
 
@@ -369,11 +369,11 @@ func TestSymlinkDryRunReportsBackupAndLink(t *testing.T) {
 		t.Fatalf("WriteFile target: %v", err)
 	}
 
-	status, message, err := Runner{}.Symlink(runtimectx.Context{DryRun: true}, tempDir, source, target)
+	status, message, err := Runner{}.Symlink(runctx.Context{DryRun: true}, tempDir, source, target)
 	if err != nil {
 		t.Fatalf("Symlink returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if !strings.Contains(message, "would back up to") || !strings.Contains(message, "and link") {
@@ -385,11 +385,11 @@ func TestGitCloneSkipsWhenAlreadyClonedFromSameOrigin(t *testing.T) {
 	origin, worktree := createOriginAndWorktree(t)
 	target := cloneRepo(t, origin, "target")
 
-	status, message, err := Runner{}.GitClone(runtimectx.Context{}, origin, target, false)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, false)
 	if err != nil {
 		t.Fatalf("GitClone returned error: %v", err)
 	}
-	if status != runtimectx.StatusSkipped {
+	if status != runctx.StatusSkipped {
 		t.Fatalf("status = %q, want skipped", status)
 	}
 	if !strings.Contains(message, "already cloned at") {
@@ -407,11 +407,11 @@ func TestGitCloneUpdatesWhenRequested(t *testing.T) {
 	gitRun(t, worktree, "commit", "-m", "update readme")
 	gitRun(t, worktree, "push", "origin", "HEAD")
 
-	status, message, err := Runner{}.GitClone(runtimectx.Context{}, origin, target, true)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, true)
 	if err != nil {
 		t.Fatalf("GitClone returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if message != "1 commit pulled" {
@@ -431,11 +431,11 @@ func TestGitCloneReportsUpToDateWhenPullHasNoChanges(t *testing.T) {
 	origin, _ := createOriginAndWorktree(t)
 	target := cloneRepo(t, origin, "target")
 
-	status, message, err := Runner{}.GitClone(runtimectx.Context{}, origin, target, true)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, true)
 	if err != nil {
 		t.Fatalf("GitClone returned error: %v", err)
 	}
-	if status != runtimectx.StatusSkipped {
+	if status != runctx.StatusSkipped {
 		t.Fatalf("status = %q, want skipped", status)
 	}
 	if message != "up-to-date" {
@@ -456,11 +456,11 @@ func TestGitCloneReportsMultiplePulledCommits(t *testing.T) {
 	gitRun(t, worktree, "commit", "-m", "update readme twice")
 	gitRun(t, worktree, "push", "origin", "HEAD")
 
-	status, message, err := Runner{}.GitClone(runtimectx.Context{}, origin, target, true)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, true)
 	if err != nil {
 		t.Fatalf("GitClone returned error: %v", err)
 	}
-	if status != runtimectx.StatusSuccess {
+	if status != runctx.StatusSuccess {
 		t.Fatalf("status = %q, want success", status)
 	}
 	if message != "2 commits pulled" {
@@ -479,11 +479,11 @@ func TestGitCloneReportsFailedToPull(t *testing.T) {
 
 	writeFile(t, target, "README.md", "local change\n")
 
-	status, message, err := Runner{}.GitClone(runtimectx.Context{}, origin, target, true)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, true)
 	if err == nil {
 		t.Fatal("GitClone returned nil error, want pull failure")
 	}
-	if status != runtimectx.StatusFailed {
+	if status != runctx.StatusFailed {
 		t.Fatalf("status = %q, want failed", status)
 	}
 	if message != "failed to pull" {

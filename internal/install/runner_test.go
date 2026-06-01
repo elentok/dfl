@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 	"dfl/internal/setuplog"
 )
 
@@ -29,7 +29,7 @@ func TestInstallRunsScriptWithExpectedEnvironment(t *testing.T) {
 	var stderr bytes.Buffer
 	runner := Runner{Stdout: &stdout, Stderr: &stderr}
 
-	code, err := runner.Install(runtimectx.Context{RepoRoot: repoRoot}, []string{"fish"})
+	code, err := runner.Install(runctx.Context{RepoRoot: repoRoot}, []string{"fish"})
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestInstallReturnsErrorForMissingComponent(t *testing.T) {
 	var stderr bytes.Buffer
 	runner := Runner{Stdout: &stdout, Stderr: &stderr}
 
-	code, err := runner.Install(runtimectx.Context{RepoRoot: t.TempDir()}, []string{"missing"})
+	code, err := runner.Install(runctx.Context{RepoRoot: t.TempDir()}, []string{"missing"})
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestInstallLogsComponentHeader(t *testing.T) {
 	t.Setenv("DFL_LOG", logPath)
 
 	runner := Runner{}
-	code, err := runner.Install(runtimectx.Context{RepoRoot: repoRoot}, []string{"fish"})
+	code, err := runner.Install(runctx.Context{RepoRoot: repoRoot}, []string{"fish"})
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}

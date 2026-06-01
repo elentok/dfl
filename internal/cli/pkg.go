@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
+	"dfl/internal/actions"
 	"dfl/internal/packagemgr"
-	runtimectx "dfl/internal/runtime"
-	"dfl/internal/runtimecmd"
+	"dfl/internal/runctx"
 	"dfl/internal/setuplog"
 	"dfl/internal/ui"
 
@@ -117,8 +117,8 @@ func (a *App) newPkgGitHubInstallCommand() *cobra.Command {
 				}
 				result, err := installer.Install("", "")
 				if err != nil {
-					_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runtimectx.StatusFailed, "failed", runtimecmd.OutputFromError(err))
-					if stepErr := ui.StepEnd(a.stdoutWriter(), runtimectx.StatusFailed, "failed"); stepErr != nil {
+					_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), stepLabel, runctx.StatusFailed, "failed", actions.OutputFromError(err))
+					if stepErr := ui.StepEnd(a.stdoutWriter(), runctx.StatusFailed, "failed"); stepErr != nil {
 						return stepErr
 					}
 					return err

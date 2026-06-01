@@ -2,10 +2,10 @@ package selfmgr
 
 import (
 	"dfl/internal/packagemgr"
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 )
 
-type Status = runtimectx.ResultStatus
+type Status = runctx.ResultStatus
 
 type InstallResult struct {
 	Status  Status

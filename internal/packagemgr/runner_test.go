@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 )
 
 func TestInstallBrewEnsuresTapAndInstallsMissingPackages(t *testing.T) {
@@ -19,7 +19,7 @@ func TestInstallBrewEnsuresTapAndInstallsMissingPackages(t *testing.T) {
 	var stdout bytes.Buffer
 	runner := Runner{Stdout: &stdout, Exec: exec}
 
-	code, err := runner.Install(runtimectx.Context{}, "brew", InstallOptions{
+	code, err := runner.Install(runctx.Context{}, "brew", InstallOptions{
 		Packages: []string{"git", "gx"},
 		Tap:      "elentok/stuff",
 	})
@@ -50,7 +50,7 @@ func TestInstallBrewDryRunPrintsPlannedActions(t *testing.T) {
 	var stdout bytes.Buffer
 	runner := Runner{Stdout: &stdout, Exec: exec}
 
-	code, err := runner.Install(runtimectx.Context{DryRun: true}, "brew", InstallOptions{
+	code, err := runner.Install(runctx.Context{DryRun: true}, "brew", InstallOptions{
 		Packages: []string{"gx"},
 		Tap:      "elentok/stuff",
 	})
@@ -76,7 +76,7 @@ func TestInstallNPMShapesGlobalInstallCommand(t *testing.T) {
 	}
 
 	runner := Runner{Exec: exec}
-	code, err := runner.Install(runtimectx.Context{}, "npm", InstallOptions{Packages: []string{"fx", "json"}})
+	code, err := runner.Install(runctx.Context{}, "npm", InstallOptions{Packages: []string{"fx", "json"}})
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestInstallSkipsWhenAllPackagesPresent(t *testing.T) {
 
 	var stdout bytes.Buffer
 	runner := Runner{Stdout: &stdout, Exec: exec}
-	code, err := runner.Install(runtimectx.Context{}, "pipx", InstallOptions{Packages: []string{"httpie"}})
+	code, err := runner.Install(runctx.Context{}, "pipx", InstallOptions{Packages: []string{"httpie"}})
 	if err != nil {
 		t.Fatalf("Install returned error: %v", err)
 	}

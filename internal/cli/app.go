@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"dfl/internal/runtime"
+	"dfl/internal/runctx"
 	"errors"
 	"fmt"
 	"io"
@@ -79,14 +79,14 @@ func (a *App) runPlaceholder(name string, args []string) error {
 	return nil
 }
 
-func (a *App) runtimeContext() (runtime.Context, error) {
+func (a *App) runtimeContext() (runctx.Context, error) {
 	return a.runtimeContextAt("")
 }
 
-func (a *App) runtimeContextAt(startDir string) (runtime.Context, error) {
-	ctx, err := runtime.NewContext(startDir)
+func (a *App) runtimeContextAt(startDir string) (runctx.Context, error) {
+	ctx, err := runctx.NewContext(startDir)
 	if err != nil {
-		return runtime.Context{}, err
+		return runctx.Context{}, err
 	}
 	ctx.DryRun = a.dryRun
 	return ctx, nil

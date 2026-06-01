@@ -1,4 +1,4 @@
-package runtimecmd
+package actions
 
 import (
 	"bufio"
@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"dfl/internal/jsonmerge"
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 	"dfl/internal/setuplog"
 	"dfl/internal/ui"
 )
@@ -103,11 +103,11 @@ func (o Runner) StepStart(message string) error {
 	return ui.StepStart(o.stdout(), message)
 }
 
-func (o Runner) StepEnd(status runtimectx.ResultStatus, message string) error {
+func (o Runner) StepEnd(status runctx.ResultStatus, message string) error {
 	return ui.StepEnd(o.stdout(), status, message)
 }
 
-func (o Runner) Shell(ctx runtimectx.Context, name string, command []string) (int, error) {
+func (o Runner) Shell(ctx runctx.Context, name string, command []string) (int, error) {
 	if len(command) == 0 {
 		return 2, errors.New("shell requires a command after --")
 	}
@@ -120,10 +120,10 @@ func (o Runner) Shell(ctx runtimectx.Context, name string, command []string) (in
 		if _, err := fmt.Fprintf(o.stdout(), "DRY-RUN: %s\n", strings.Join(command, " ")); err != nil {
 			return 1, err
 		}
-		if err := o.StepEnd(runtimectx.StatusSkipped, "dry-run"); err != nil {
+		if err := o.StepEnd(runctx.StatusSkipped, "dry-run"); err != nil {
 			return 1, err
 		}
-		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), name, runtimectx.StatusSkipped, "dry-run", "")
+		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), name, runctx.StatusSkipped, "dry-run", "")
 		return 0, nil
 	}
 
@@ -135,9 +135,9 @@ func (o Runner) Shell(ctx runtimectx.Context, name string, command []string) (in
 	cmd.Env = os.Environ()
 
 	if err := cmd.Run(); err != nil {
-		_ = o.StepEnd(runtimectx.StatusFailed, "command failed")
+		_ = o.StepEnd(runctx.StatusFailed, "command failed")
 		output := combinedOutput(stdoutBuf.String(), stderrBuf.String())
-		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), name, runtimectx.StatusFailed, "command failed", output)
+		_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), name, runctx.StatusFailed, "command failed", output)
 
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
@@ -147,23 +147,23 @@ func (o Runner) Shell(ctx runtimectx.Context, name string, command []string) (in
 		return 1, &OutputError{Err: err, Output: output}
 	}
 
-	if err := o.StepEnd(runtimectx.StatusSuccess, "done"); err != nil {
+	if err := o.StepEnd(runctx.StatusSuccess, "done"); err != nil {
 		return 1, err
 	}
-	_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), name, runtimectx.StatusSuccess, "done", "")
+	_ = setuplog.AppendResult(os.Getenv("DFL_LOG"), name, runctx.StatusSuccess, "done", "")
 
 	return 0, nil
 }
 
-func (o Runner) GitClone(ctx runtimectx.Context, origin, target string, update bool) (runtimectx.ResultStatus, string, error) {
+func (o Runner) GitClone(ctx runctx.Context, origin, target string, update bool) (runctx.ResultStatus, string, error) {
 	resolvedOrigin, err := resolveCloneOrigin(ctx.RepoRoot, origin)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	resolvedTarget, err := expandPath(target)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	info, err := os.Stat(resolvedTarget)
@@ -172,44 +172,44 @@ func (o Runner) GitClone(ctx runtimectx.Context, origin, target string, update b
 		if gitInfo, gitErr := os.Stat(gitDir); gitErr == nil && gitInfo.IsDir() {
 			currentOrigin, gitErr := gitOrigin(resolvedTarget)
 			if gitErr != nil {
-				return runtimectx.StatusFailed, "", gitErr
+				return runctx.StatusFailed, "", gitErr
 			}
 			if sameCloneOrigin(currentOrigin, resolvedOrigin) {
 				if update {
 					if ctx.DryRun {
-						return runtimectx.StatusSuccess, fmt.Sprintf("already cloned, would update %s", resolvedTarget), nil
+						return runctx.StatusSuccess, fmt.Sprintf("already cloned, would update %s", resolvedTarget), nil
 					}
 					pullResult, err := gitPull(resolvedTarget)
 					if err != nil {
-						return runtimectx.StatusFailed, "failed to pull", err
+						return runctx.StatusFailed, "failed to pull", err
 					}
 					if pullResult.upToDate {
-						return runtimectx.StatusSkipped, "up-to-date", nil
+						return runctx.StatusSkipped, "up-to-date", nil
 					}
-					return runtimectx.StatusSuccess, commitsPulledMessage(pullResult.commitCount), nil
+					return runctx.StatusSuccess, commitsPulledMessage(pullResult.commitCount), nil
 				}
-				return runtimectx.StatusSkipped, fmt.Sprintf("already cloned at %s", resolvedTarget), nil
+				return runctx.StatusSkipped, fmt.Sprintf("already cloned at %s", resolvedTarget), nil
 			}
 		}
 
 		backupPath, err := o.Backup(ctx, resolvedTarget)
 		if err != nil {
-			return runtimectx.StatusFailed, "", err
+			return runctx.StatusFailed, "", err
 		}
 		if ctx.DryRun {
-			return runtimectx.StatusSuccess, fmt.Sprintf("would back up to %s and clone %s into %s", backupPath, resolvedOrigin, resolvedTarget), nil
+			return runctx.StatusSuccess, fmt.Sprintf("would back up to %s and clone %s into %s", backupPath, resolvedOrigin, resolvedTarget), nil
 		}
 	}
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	if ctx.DryRun {
-		return runtimectx.StatusSuccess, fmt.Sprintf("would clone %s into %s", resolvedOrigin, resolvedTarget), nil
+		return runctx.StatusSuccess, fmt.Sprintf("would clone %s into %s", resolvedOrigin, resolvedTarget), nil
 	}
 
 	if err := os.MkdirAll(filepath.Dir(resolvedTarget), 0o755); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	cmd := exec.Command("git", "clone", resolvedOrigin, resolvedTarget)
@@ -218,15 +218,15 @@ func (o Runner) GitClone(ctx runtimectx.Context, origin, target string, update b
 	cmd.Stdout = io.MultiWriter(o.stdout(), &stdoutBuf)
 	cmd.Stderr = io.MultiWriter(o.stderr(), &stderrBuf)
 	if err := cmd.Run(); err != nil {
-		return runtimectx.StatusFailed, "", &OutputError{Err: err, Output: combinedOutput(stdoutBuf.String(), stderrBuf.String())}
+		return runctx.StatusFailed, "", &OutputError{Err: err, Output: combinedOutput(stdoutBuf.String(), stderrBuf.String())}
 	}
-	return runtimectx.StatusSuccess, fmt.Sprintf("cloned %s into %s", resolvedOrigin, resolvedTarget), nil
+	return runctx.StatusSuccess, fmt.Sprintf("cloned %s into %s", resolvedOrigin, resolvedTarget), nil
 }
 
-func (o Runner) Symlink(ctx runtimectx.Context, componentRoot, source, target string) (runtimectx.ResultStatus, string, error) {
+func (o Runner) Symlink(ctx runctx.Context, componentRoot, source, target string) (runctx.ResultStatus, string, error) {
 	resolvedSource, resolvedTarget, err := resolvePaths(componentRoot, source, target)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	var backupPath string
@@ -234,201 +234,201 @@ func (o Runner) Symlink(ctx runtimectx.Context, componentRoot, source, target st
 		if info.Mode()&os.ModeSymlink != 0 {
 			current, err := os.Readlink(resolvedTarget)
 			if err != nil {
-				return runtimectx.StatusFailed, "", err
+				return runctx.StatusFailed, "", err
 			}
 			if samePath(current, resolvedSource, filepath.Dir(resolvedTarget)) {
-				return runtimectx.StatusSkipped, "already exists", nil
+				return runctx.StatusSkipped, "already exists", nil
 			}
 		}
 
 		backupPath, err = o.Backup(ctx, resolvedTarget)
 		if err != nil {
-			return runtimectx.StatusFailed, "", err
+			return runctx.StatusFailed, "", err
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	if ctx.DryRun {
 		if backupPath != "" {
-			return runtimectx.StatusSuccess, fmt.Sprintf("would back up to %s and link %s -> %s", backupPath, resolvedTarget, resolvedSource), nil
+			return runctx.StatusSuccess, fmt.Sprintf("would back up to %s and link %s -> %s", backupPath, resolvedTarget, resolvedSource), nil
 		}
-		return runtimectx.StatusSuccess, fmt.Sprintf("would link %s -> %s", resolvedTarget, resolvedSource), nil
+		return runctx.StatusSuccess, fmt.Sprintf("would link %s -> %s", resolvedTarget, resolvedSource), nil
 	}
 
 	if err := os.MkdirAll(filepath.Dir(resolvedTarget), 0o755); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 	if err := os.RemoveAll(resolvedTarget); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 	if err := os.Symlink(resolvedSource, resolvedTarget); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	if backupPath != "" {
-		return runtimectx.StatusSuccess, fmt.Sprintf("backed up to %s and linked %s -> %s", backupPath, resolvedTarget, resolvedSource), nil
+		return runctx.StatusSuccess, fmt.Sprintf("backed up to %s and linked %s -> %s", backupPath, resolvedTarget, resolvedSource), nil
 	}
-	return runtimectx.StatusSuccess, fmt.Sprintf("linked %s -> %s", resolvedTarget, resolvedSource), nil
+	return runctx.StatusSuccess, fmt.Sprintf("linked %s -> %s", resolvedTarget, resolvedSource), nil
 }
 
-func (o Runner) Copy(ctx runtimectx.Context, componentRoot, source, target string) (runtimectx.ResultStatus, string, error) {
+func (o Runner) Copy(ctx runctx.Context, componentRoot, source, target string) (runctx.ResultStatus, string, error) {
 	resolvedSource, resolvedTarget, err := resolvePaths(componentRoot, source, target)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	same, err := sameFileContents(resolvedSource, resolvedTarget)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 	if same {
-		return runtimectx.StatusSkipped, "already up to date", nil
+		return runctx.StatusSkipped, "already up to date", nil
 	}
 
 	if _, err := os.Stat(resolvedTarget); err == nil {
 		if _, err := o.Backup(ctx, resolvedTarget); err != nil {
-			return runtimectx.StatusFailed, "", err
+			return runctx.StatusFailed, "", err
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	if ctx.DryRun {
-		return runtimectx.StatusSuccess, fmt.Sprintf("would copy %s -> %s", resolvedSource, resolvedTarget), nil
+		return runctx.StatusSuccess, fmt.Sprintf("would copy %s -> %s", resolvedSource, resolvedTarget), nil
 	}
 
 	data, err := os.ReadFile(resolvedSource)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	if err := os.MkdirAll(filepath.Dir(resolvedTarget), 0o755); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 	if err := os.WriteFile(resolvedTarget, data, sourceMode(resolvedSource)); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
-	return runtimectx.StatusSuccess, fmt.Sprintf("copied %s", resolvedTarget), nil
+	return runctx.StatusSuccess, fmt.Sprintf("copied %s", resolvedTarget), nil
 }
 
-func (o Runner) Inject(ctx runtimectx.Context, componentRoot, source, target string, link bool) (runtimectx.ResultStatus, string, error) {
+func (o Runner) Inject(ctx runctx.Context, componentRoot, source, target string, link bool) (runctx.ResultStatus, string, error) {
 	resolvedSource, resolvedTarget, err := resolvePaths(componentRoot, source, target)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	sourceData, err := os.ReadFile(resolvedSource)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	targetData, err := os.ReadFile(resolvedTarget)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	rendered, err := renderInjectedFile(string(targetData), string(sourceData), displayPath(resolvedSource), resolvedSource, link)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	if string(targetData) == rendered {
-		return runtimectx.StatusSkipped, "already up to date", nil
+		return runctx.StatusSkipped, "already up to date", nil
 	}
 
 	if ctx.DryRun {
 		if link {
-			return runtimectx.StatusSuccess, fmt.Sprintf("would inject link %s into %s", resolvedSource, resolvedTarget), nil
+			return runctx.StatusSuccess, fmt.Sprintf("would inject link %s into %s", resolvedSource, resolvedTarget), nil
 		}
-		return runtimectx.StatusSuccess, fmt.Sprintf("would inject %s into %s", resolvedSource, resolvedTarget), nil
+		return runctx.StatusSuccess, fmt.Sprintf("would inject %s into %s", resolvedSource, resolvedTarget), nil
 	}
 
 	if err := os.MkdirAll(filepath.Dir(resolvedTarget), 0o755); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 	if err := os.WriteFile(resolvedTarget, []byte(rendered), targetMode(resolvedTarget, resolvedSource)); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
-	return runtimectx.StatusSuccess, "done", nil
+	return runctx.StatusSuccess, "done", nil
 }
 
-func (o Runner) MergeJSON(ctx runtimectx.Context, componentRoot string, inputs []string, output string) (runtimectx.ResultStatus, string, error) {
+func (o Runner) MergeJSON(ctx runctx.Context, componentRoot string, inputs []string, output string) (runctx.ResultStatus, string, error) {
 	resolvedOutput, err := expandPath(output)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	values := make([]any, 0, len(inputs))
 	for _, input := range inputs {
 		resolvedInput, _, err := resolvePaths(componentRoot, input, output)
 		if err != nil {
-			return runtimectx.StatusFailed, "", err
+			return runctx.StatusFailed, "", err
 		}
 		data, err := os.ReadFile(resolvedInput)
 		if err != nil {
-			return runtimectx.StatusFailed, "", err
+			return runctx.StatusFailed, "", err
 		}
 		var value any
 		if err := json.Unmarshal(data, &value); err != nil {
-			return runtimectx.StatusFailed, "", fmt.Errorf("parsing %s: %w", resolvedInput, err)
+			return runctx.StatusFailed, "", fmt.Errorf("parsing %s: %w", resolvedInput, err)
 		}
 		values = append(values, value)
 	}
 
 	rendered, err := jsonmerge.Marshal(jsonmerge.Merge(values...))
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	current, err := os.ReadFile(resolvedOutput)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 	if bytes.Equal(current, rendered) {
-		return runtimectx.StatusSkipped, "already up to date", nil
+		return runctx.StatusSkipped, "already up to date", nil
 	}
 
 	if ctx.DryRun {
-		return runtimectx.StatusSuccess, fmt.Sprintf("would merge %d files into %s", len(inputs), resolvedOutput), nil
+		return runctx.StatusSuccess, fmt.Sprintf("would merge %d files into %s", len(inputs), resolvedOutput), nil
 	}
 
 	if err := os.MkdirAll(filepath.Dir(resolvedOutput), 0o755); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 	if err := os.WriteFile(resolvedOutput, rendered, 0o644); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
-	return runtimectx.StatusSuccess, "done", nil
+	return runctx.StatusSuccess, "done", nil
 }
 
-func (o Runner) Mkdir(ctx runtimectx.Context, path string) (runtimectx.ResultStatus, string, error) {
+func (o Runner) Mkdir(ctx runctx.Context, path string) (runctx.ResultStatus, string, error) {
 	resolvedPath, err := expandPath(path)
 	if err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	if info, err := os.Stat(resolvedPath); err == nil && info.IsDir() {
-		return runtimectx.StatusSkipped, "already exists", nil
+		return runctx.StatusSkipped, "already exists", nil
 	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
 	if ctx.DryRun {
-		return runtimectx.StatusSuccess, fmt.Sprintf("would create %s", resolvedPath), nil
+		return runctx.StatusSuccess, fmt.Sprintf("would create %s", resolvedPath), nil
 	}
 
 	if err := os.MkdirAll(resolvedPath, 0o755); err != nil {
-		return runtimectx.StatusFailed, "", err
+		return runctx.StatusFailed, "", err
 	}
 
-	return runtimectx.StatusSuccess, fmt.Sprintf("created %s", resolvedPath), nil
+	return runctx.StatusSuccess, fmt.Sprintf("created %s", resolvedPath), nil
 }
 
-func (o Runner) Backup(ctx runtimectx.Context, path string) (string, error) {
+func (o Runner) Backup(ctx runctx.Context, path string) (string, error) {
 	resolvedPath, err := expandPath(path)
 	if err != nil {
 		return "", err

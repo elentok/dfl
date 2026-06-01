@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	runtimectx "dfl/internal/runtime"
+	"dfl/internal/runctx"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -41,7 +41,7 @@ func StepStartWithIndent(w io.Writer, message, indent string, leadingBlankLine b
 	return err
 }
 
-func StepEnd(w io.Writer, status runtimectx.ResultStatus, message string) error {
+func StepEnd(w io.Writer, status runctx.ResultStatus, message string) error {
 	style, icon := statusStyle(status)
 	if message == "" {
 		_, err := fmt.Fprintf(w, "%s\n", style.Render(fmt.Sprintf("%s %s", icon, status)))
@@ -52,7 +52,7 @@ func StepEnd(w io.Writer, status runtimectx.ResultStatus, message string) error 
 	return err
 }
 
-func StepEndWithIndent(w io.Writer, status runtimectx.ResultStatus, message, indent string) error {
+func StepEndWithIndent(w io.Writer, status runctx.ResultStatus, message, indent string) error {
 	style, icon := statusStyle(status)
 	if message == "" {
 		_, err := fmt.Fprintf(w, "%s\n", indent+style.Render(fmt.Sprintf("%s %s", icon, status)))
@@ -63,20 +63,20 @@ func StepEndWithIndent(w io.Writer, status runtimectx.ResultStatus, message, ind
 	return err
 }
 
-func statusStyle(status runtimectx.ResultStatus) (lipgloss.Style, string) {
+func statusStyle(status runctx.ResultStatus) (lipgloss.Style, string) {
 	switch status {
-	case runtimectx.StatusSuccess:
+	case runctx.StatusSuccess:
 		return stepSuccessStyle, "✓"
-	case runtimectx.StatusSkipped:
+	case runctx.StatusSkipped:
 		return stepSkippedStyle, "○"
-	case runtimectx.StatusFailed:
+	case runctx.StatusFailed:
 		return stepFailedStyle, "✗"
 	default:
 		return stepSkippedStyle, "○"
 	}
 }
 
-func Step(w io.Writer, message string, fn func() (runtimectx.ResultStatus, string, error)) error {
+func Step(w io.Writer, message string, fn func() (runctx.ResultStatus, string, error)) error {
 	if err := StepStart(w, message); err != nil {
 		return err
 	}

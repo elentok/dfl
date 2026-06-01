@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"dfl/internal/runtime"
-	"dfl/internal/runtimecmd"
+	"dfl/internal/actions"
+	"dfl/internal/runctx"
 	"dfl/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -17,7 +17,7 @@ func (a *App) newHasCommandCommand() *cobra.Command {
 		Short: "Exit successfully if a command exists",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			found, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).HasCommand(args[0])
+			found, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).HasCommand(args[0])
 			if err != nil {
 				return err
 			}
@@ -39,7 +39,7 @@ func (a *App) newAskCommand() *cobra.Command {
 			if len(args) == 2 {
 				defaultValue = args[1]
 			}
-			value, err := (runtimecmd.Runner{
+			value, err := (actions.Runner{
 				Stdin:  a.stdinReader(),
 				Stdout: a.stdoutWriter(),
 				Stderr: a.stderrWriter(),
@@ -60,9 +60,9 @@ func (a *App) newStepCommand() *cobra.Command {
 	}
 	cmd.AddCommand(
 		a.newStepStartCommand(),
-		a.newStepStatusCommand("success", runtime.StatusSuccess, "Print a success step line"),
-		a.newStepStatusCommand("skip", runtime.StatusSkipped, "Print a skipped step line"),
-		a.newStepStatusCommand("error", runtime.StatusFailed, "Print an error step line"),
+		a.newStepStatusCommand("success", runctx.StatusSuccess, "Print a success step line"),
+		a.newStepStatusCommand("skip", runctx.StatusSkipped, "Print a skipped step line"),
+		a.newStepStatusCommand("error", runctx.StatusFailed, "Print an error step line"),
 	)
 	return cmd
 }
@@ -74,7 +74,7 @@ func (a *App) newStepStartCommand() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			message := strings.Join(args, " ")
-			if err := (runtimecmd.Runner{Stdout: a.stdoutWriter()}).StepStart(message); err != nil {
+			if err := (actions.Runner{Stdout: a.stdoutWriter()}).StepStart(message); err != nil {
 				return err
 			}
 			logStepStart(message)
@@ -83,7 +83,7 @@ func (a *App) newStepStartCommand() *cobra.Command {
 	}
 }
 
-func (a *App) newStepStatusCommand(name string, status runtime.ResultStatus, short string) *cobra.Command {
+func (a *App) newStepStatusCommand(name string, status runctx.ResultStatus, short string) *cobra.Command {
 	return &cobra.Command{
 		Use:   name + " [message...]",
 		Short: short,
@@ -92,13 +92,13 @@ func (a *App) newStepStatusCommand(name string, status runtime.ResultStatus, sho
 			message := strings.Join(args, " ")
 			if message == "" {
 				switch status {
-				case runtime.StatusSuccess:
+				case runctx.StatusSuccess:
 					message = "done"
-				case runtime.StatusFailed:
+				case runctx.StatusFailed:
 					message = "failed"
 				}
 			}
-			if err := (runtimecmd.Runner{Stdout: a.stdoutWriter()}).StepEnd(status, message); err != nil {
+			if err := (actions.Runner{Stdout: a.stdoutWriter()}).StepEnd(status, message); err != nil {
 				return err
 			}
 			logStepEnd(status, message)
@@ -117,7 +117,7 @@ func (a *App) newShellCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			code, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Shell(ctx, args[0], args[1:])
+			code, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Shell(ctx, args[0], args[1:])
 			if err != nil {
 				if code != 0 {
 					return exitError{code: code, err: err}
@@ -150,7 +150,7 @@ func (a *App) newGitCloneCommand() *cobra.Command {
 			if _, err := fmt.Fprintf(a.stdoutWriter(), "       => %s\n", args[1]); err != nil {
 				return err
 			}
-			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).GitClone(ctx, args[0], args[1], update)
+			status, message, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).GitClone(ctx, args[0], args[1], update)
 			if err != nil {
 				logStepResult(label, status, message, err)
 				if stepErr := ui.StepEnd(a.stdoutWriter(), status, message); stepErr != nil {
@@ -182,7 +182,7 @@ func (a *App) newSymlinkCommand() *cobra.Command {
 			if _, err := fmt.Fprintf(a.stdoutWriter(), "       => %s\n", args[1]); err != nil {
 				return err
 			}
-			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Symlink(ctx, componentRoot(), args[0], args[1])
+			status, message, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Symlink(ctx, componentRoot(), args[0], args[1])
 			if err != nil {
 				return err
 			}
@@ -193,8 +193,8 @@ func (a *App) newSymlinkCommand() *cobra.Command {
 }
 
 func (a *App) newCopyCommand() *cobra.Command {
-	return a.newFilesystemCommand("copy", "<source> <target>", cobra.ExactArgs(2), func(ctx runtime.Context, args []string) (runtime.ResultStatus, string, error) {
-		return (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Copy(ctx, componentRoot(), args[0], args[1])
+	return a.newFilesystemCommand("copy", "<source> <target>", cobra.ExactArgs(2), func(ctx runctx.Context, args []string) (runctx.ResultStatus, string, error) {
+		return (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Copy(ctx, componentRoot(), args[0], args[1])
 	})
 }
 
@@ -213,7 +213,7 @@ func (a *App) newInjectCommand() *cobra.Command {
 			if err := ui.StepStart(a.stdoutWriter(), label); err != nil {
 				return err
 			}
-			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Inject(ctx, componentRoot(), args[0], args[1], link)
+			status, message, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Inject(ctx, componentRoot(), args[0], args[1], link)
 			if err != nil {
 				return err
 			}
@@ -241,7 +241,7 @@ func (a *App) newMergeJSONCommand() *cobra.Command {
 			if err := ui.StepStart(a.stdoutWriter(), label); err != nil {
 				return err
 			}
-			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).MergeJSON(ctx, componentRoot(), inputs, output)
+			status, message, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).MergeJSON(ctx, componentRoot(), inputs, output)
 			if err != nil {
 				return err
 			}
@@ -264,7 +264,7 @@ func (a *App) newMkdirCommand() *cobra.Command {
 			if err := ui.StepStart(a.stdoutWriter(), fmt.Sprintf("Creating %s", args[0])); err != nil {
 				return err
 			}
-			status, message, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Mkdir(ctx, args[0])
+			status, message, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Mkdir(ctx, args[0])
 			if err != nil {
 				return err
 			}
@@ -284,25 +284,25 @@ func (a *App) newBackupCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			backupPath, err := (runtimecmd.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Backup(ctx, args[0])
+			backupPath, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).Backup(ctx, args[0])
 			if err != nil {
 				return err
 			}
 			if backupPath == "" {
-				logStepResult(fmt.Sprintf("Backing up %s", args[0]), runtime.StatusSkipped, "path does not exist", nil)
-				return ui.StepEnd(a.stdoutWriter(), runtime.StatusSkipped, "path does not exist")
+				logStepResult(fmt.Sprintf("Backing up %s", args[0]), runctx.StatusSkipped, "path does not exist", nil)
+				return ui.StepEnd(a.stdoutWriter(), runctx.StatusSkipped, "path does not exist")
 			}
 			if ctx.DryRun {
-				logStepResult(fmt.Sprintf("Backing up %s", args[0]), runtime.StatusSuccess, fmt.Sprintf("would move to %s", backupPath), nil)
-				return ui.StepEnd(a.stdoutWriter(), runtime.StatusSuccess, fmt.Sprintf("would move to %s", backupPath))
+				logStepResult(fmt.Sprintf("Backing up %s", args[0]), runctx.StatusSuccess, fmt.Sprintf("would move to %s", backupPath), nil)
+				return ui.StepEnd(a.stdoutWriter(), runctx.StatusSuccess, fmt.Sprintf("would move to %s", backupPath))
 			}
-			logStepResult(fmt.Sprintf("Backing up %s", args[0]), runtime.StatusSuccess, fmt.Sprintf("moved to %s", backupPath), nil)
-			return ui.StepEnd(a.stdoutWriter(), runtime.StatusSuccess, fmt.Sprintf("moved to %s", backupPath))
+			logStepResult(fmt.Sprintf("Backing up %s", args[0]), runctx.StatusSuccess, fmt.Sprintf("moved to %s", backupPath), nil)
+			return ui.StepEnd(a.stdoutWriter(), runctx.StatusSuccess, fmt.Sprintf("moved to %s", backupPath))
 		},
 	}
 }
 
-func (a *App) newFilesystemCommand(name, argUse string, args cobra.PositionalArgs, run func(runtime.Context, []string) (runtime.ResultStatus, string, error)) *cobra.Command {
+func (a *App) newFilesystemCommand(name, argUse string, args cobra.PositionalArgs, run func(runctx.Context, []string) (runctx.ResultStatus, string, error)) *cobra.Command {
 	return &cobra.Command{
 		Use:   strings.TrimSpace(name + " " + argUse),
 		Short: name,
