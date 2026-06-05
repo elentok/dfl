@@ -143,6 +143,28 @@ dfl_Darwin_arm64.tar.gz
 dfl_Linux_x86_64.tar.gz
 ```
 
+## Shell Completions
+
+`dfl` can generate shell completion scripts via the `completion` subcommand.
+
+**Fish:**
+
+```sh
+dfl completion fish > ~/.config/fish/completions/dfl.fish
+```
+
+**Bash:**
+
+```sh
+dfl completion bash > /etc/bash_completion.d/dfl
+```
+
+**Zsh:**
+
+```sh
+dfl completion zsh > "${fpath[1]}/_dfl"
+```
+
 ## Development
 
 Run the test suite:

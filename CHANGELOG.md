@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.9] - 2026-06-05
+
+- Enable cobra's completion generator (via `dfl completion`)
+
 ## [0.2.8] - 2026-06-01
 
 - Added `dfl merge-json <input...> <output>` for deep-merging two or more JSON files into the output
