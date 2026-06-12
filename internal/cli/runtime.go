@@ -53,6 +53,39 @@ func (a *App) newAskCommand() *cobra.Command {
 	}
 }
 
+func (a *App) newConfirmCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "confirm <question> [default]",
+		Short: "Prompt for a yes/no answer; exit 0 for yes, 1 for no",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			defaultYes := false
+			if len(args) == 2 {
+				switch strings.ToLower(args[1]) {
+				case "yes":
+					defaultYes = true
+				case "no":
+					defaultYes = false
+				default:
+					return exitError{code: 2, err: fmt.Errorf("invalid default %q: must be \"yes\" or \"no\"", args[1])}
+				}
+			}
+			ok, err := (actions.Runner{
+				Stdin:  a.stdinReader(),
+				Stdout: a.stdoutWriter(),
+				Stderr: a.stderrWriter(),
+			}).Confirm(args[0], defaultYes)
+			if err != nil {
+				return err
+			}
+			if ok {
+				return nil
+			}
+			return exitError{code: 1}
+		},
+	}
+}
+
 func (a *App) newStepCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "step",

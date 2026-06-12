@@ -8,7 +8,7 @@ func (a *App) newRootCommand() *cobra.Command {
 		Short:         "Dotfiles runtime",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
 	}
@@ -23,6 +23,7 @@ RunE: func(cmd *cobra.Command, args []string) error {
 		a.newOSCommand(),
 		a.newHasCommandCommand(),
 		a.newAskCommand(),
+		a.newConfirmCommand(),
 		a.newStepCommand(),
 		a.newShellCommand(),
 		a.newGitCloneCommand(),

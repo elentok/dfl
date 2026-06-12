@@ -102,6 +102,7 @@ dfl merge-json ~/.claude/settings.json settings.base.json ~/.claude/settings.jso
 dfl mkdir ~/.config/myapp
 dfl backup ~/.gitconfig
 dfl shell "Reload config" -- sh -c 'echo hello'
+dfl confirm "Overwrite existing config?"
 ```
 
 These commands are designed to produce consistent step-style output and to support `--dry-run`.
@@ -116,6 +117,20 @@ last argument). Objects merge recursively, arrays are unioned (deduplicated, fir
 on scalar conflicts the later input wins. The output path may be one of the inputs for an in-place
 merge, e.g. `dfl merge-json ~/.claude/settings.json settings.base.json ~/.claude/settings.json`
 keeps runtime-written keys while letting the managed base win the keys it declares.
+
+`dfl confirm <question> [yes|no]` prompts for a single-keypress yes/no answer and exits `0` for
+yes or `1` for no, so it slots straight into shell conditionals:
+
+```sh
+if dfl confirm "Do something?"; then
+  # do it
+fi
+```
+
+The default is `no` (`Question (y/N)?`); pass `yes` to default to yes (`Question (Y/n)?`). Pressing
+Enter accepts the default, Esc/Ctrl-C/Ctrl-D cancel (treated as no), and any other key is ignored.
+The prompt is written to stderr, and when stdin is not a terminal the default is used without
+blocking.
 
 GitHub package installs use the repository basename as the binary name and install into
 `~/.local/bin`. For example:
