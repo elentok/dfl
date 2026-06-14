@@ -1,5 +1,7 @@
 # dfl
 
+![Logo](docs/logo.png)
+
 `dfl` is a Go-based runtime for bootstrapping and maintaining a dotfiles repo.
 
 It is designed to replace an ad hoc shell framework with a single binary that can:
