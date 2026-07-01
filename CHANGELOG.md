@@ -4,13 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
-## [0.2.10] - 2026-06-13
+## [0.2.10] - 2026-07-02
 
 - Added `dfl confirm <question> [yes|no]`, a single-keypress yes/no prompt for shell scripts. It
   exits `0` for yes and `1` for no, so it drops into conditionals like `if dfl confirm "..."; then`.
   The default is `no` (`(y/N)?`), pass `yes` to default to yes (`(Y/n)?`). Enter accepts the
   default, Esc/Ctrl-C/Ctrl-D cancel (no), other keys are ignored, the prompt goes to stderr, and a
   non-terminal stdin resolves to the default without blocking.
+- Fixed `dfl inject --link` to collapse `$HOME` to `~` in the `@path` payload line (it already did
+  so for the `source=` marker), so injected files stay portable across environments with a
+  different `$HOME`, such as Docker containers.
 
 ## [0.2.9] - 2026-06-05
 
