@@ -145,6 +145,45 @@ func TestInjectLinkModeWritesReferencePayload(t *testing.T) {
 	}
 }
 
+func TestInjectLinkModeCollapsesHomeInPayload(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	sourceDir := filepath.Join(home, ".dotfiles", "core", "ai")
+	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	source := filepath.Join(sourceDir, "AGENTS.md")
+	target := filepath.Join(home, "target.md")
+	if err := os.WriteFile(source, []byte("ignored in link mode\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile source: %v", err)
+	}
+	if err := os.WriteFile(target, []byte("base text\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile target: %v", err)
+	}
+
+	status, message, err := Runner{}.Inject(runctx.Context{}, home, source, target, true)
+	if err != nil {
+		t.Fatalf("Inject returned error: %v", err)
+	}
+	if status != runctx.StatusSuccess {
+		t.Fatalf("status = %q, want success", status)
+	}
+	if message != "done" {
+		t.Fatalf("message = %q, want done", message)
+	}
+
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("ReadFile target: %v", err)
+	}
+
+	want := "base text\n\n<!-- dfl:inject:start source=~/.dotfiles/core/ai/AGENTS.md -->\n@~/.dotfiles/core/ai/AGENTS.md\n<!-- dfl:inject:end -->\n"
+	if string(data) != want {
+		t.Fatalf("target = %q, want %q", string(data), want)
+	}
+}
+
 func TestInjectDryRunLinkModeMessage(t *testing.T) {
 	tempDir := t.TempDir()
 	source := filepath.Join(tempDir, "source.md")

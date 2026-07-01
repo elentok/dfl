@@ -67,7 +67,7 @@ func renderInjectedFile(targetContent, sourceContent, sourcePath, resolvedSource
 	sourceContent = strings.TrimRight(sourceContent, "\n")
 	payload := sourceContent
 	if link {
-		payload = "@" + filepath.Clean(resolvedSourcePath)
+		payload = "@" + displayPath(resolvedSourcePath)
 	}
 
 	var b strings.Builder
