@@ -42,18 +42,35 @@ func (u Updater) Run(repoOverride string) (int, error) {
 		return 1, err
 	}
 
+	var pulledCommits []string
 	err = ui.Step(u.stdout(), "Updating dotfiles repo", func() (runctx.ResultStatus, string, error) {
 		if u.DryRun {
 			return runctx.StatusSuccess, fmt.Sprintf("would update %s", repoRoot), nil
 		}
 
-		if err := u.updateRepo(repoRoot); err != nil {
+		commits, err := u.updateRepo(repoRoot)
+		if err != nil {
 			return "", "", err
 		}
+		pulledCommits = commits
 		return runctx.StatusSuccess, fmt.Sprintf("updated %s", repoRoot), nil
 	})
 	if err != nil {
 		return 1, err
+	}
+
+	if !u.DryRun {
+		if len(pulledCommits) == 0 {
+			if err := ui.Detail(u.stdout(), "no new commits", "  "); err != nil {
+				return 1, err
+			}
+		} else {
+			for _, commit := range pulledCommits {
+				if err := ui.Detail(u.stdout(), commit, "  "); err != nil {
+					return 1, err
+				}
+			}
+		}
 	}
 
 	err = ui.Step(u.stdout(), "Running dotfiles setup", func() (runctx.ResultStatus, string, error) {
@@ -138,7 +155,28 @@ func (u Updater) stdin() io.Reader {
 	return os.Stdin
 }
 
-func (u Updater) updateRepo(repoRoot string) error {
+func (u Updater) updateRepo(repoRoot string) ([]string, error) {
+	beforeHead, err := u.gitHead(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := u.pullRepo(repoRoot); err != nil {
+		return nil, err
+	}
+
+	afterHead, err := u.gitHead(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	if afterHead == beforeHead {
+		return nil, nil
+	}
+
+	return u.pulledCommits(repoRoot, beforeHead, afterHead)
+}
+
+func (u Updater) pullRepo(repoRoot string) error {
 	output, err := u.runGit(repoRoot, "pull", "--ff-only")
 	if err == nil {
 		return nil
@@ -168,6 +206,29 @@ func (u Updater) updateRepo(repoRoot string) error {
 	}
 
 	return nil
+}
+
+func (u Updater) gitHead(repoRoot string) (string, error) {
+	cmd := exec.Command("git", "-C", repoRoot, "rev-parse", "HEAD")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func (u Updater) pulledCommits(repoRoot, beforeHead, afterHead string) ([]string, error) {
+	cmd := exec.Command("git", "-C", repoRoot, "log", "--oneline", beforeHead+".."+afterHead)
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	trimmed := strings.TrimSpace(string(output))
+	if trimmed == "" {
+		return nil, nil
+	}
+	return strings.Split(trimmed, "\n"), nil
 }
 
 func (u Updater) runGit(repoRoot string, args ...string) (string, error) {

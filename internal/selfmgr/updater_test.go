@@ -51,7 +51,7 @@ func TestUpdateRepoOffersToStashTrackedChangesAndRestoresThem(t *testing.T) {
 		Stderr: &stderr,
 	}
 
-	if err := updater.updateRepo(repoRoot); err != nil {
+	if _, err := updater.updateRepo(repoRoot); err != nil {
 		t.Fatalf("updateRepo returned error: %v", err)
 	}
 
@@ -75,7 +75,7 @@ func TestUpdateRepoLeavesStashWhenPullStillFails(t *testing.T) {
 		Stdin: strings.NewReader("y\n"),
 	}
 
-	err := updater.updateRepo(repoRoot)
+	_, err := updater.updateRepo(repoRoot)
 	if err == nil {
 		t.Fatalf("updateRepo returned nil error, want failure after stashing")
 	}
@@ -114,6 +114,9 @@ shift || true
 case "$cmd" in
   status)
     printf ' M tracked.txt\n'
+    ;;
+  rev-parse)
+    printf 'stubhead0000000000000000000000000000000\n'
     ;;
   pull)
     if [ ! -f "$state_dir/stash-push" ] || [ -n "$fail_after_stash" ]; then

@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.11] - 2026-07-15
+
+- `dfl update` now prints the one-line-per-commit summary of what was pulled into the dotfiles
+  repo (short hash + subject), or `no new commits` when the pull was a no-op.
+
 ## [0.2.10] - 2026-07-02
 
 - Added `dfl confirm <question> [yes|no]`, a single-keypress yes/no prompt for shell scripts. It

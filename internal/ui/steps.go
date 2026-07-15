@@ -89,6 +89,11 @@ func Step(w io.Writer, message string, fn func() (runctx.ResultStatus, string, e
 	return StepEnd(w, status, detail)
 }
 
+func Detail(w io.Writer, message, indent string) error {
+	_, err := fmt.Fprintf(w, "%s\n", indent+stepSkippedStyle.Render(message))
+	return err
+}
+
 func Success(w io.Writer, message string) error {
 	_, err := fmt.Fprintf(w, "%s\n", stepSuccessStyle.Render("✔ "+message))
 	return err
