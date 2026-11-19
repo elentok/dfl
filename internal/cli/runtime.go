@@ -167,6 +167,7 @@ func (a *App) newShellCommand() *cobra.Command {
 
 func (a *App) newGitCloneCommand() *cobra.Command {
 	var update bool
+	var ref string
 	cmd := &cobra.Command{
 		Use:   "git-clone <origin> <target>",
 		Short: "Clone a git repository, backing up conflicting targets",
@@ -183,7 +184,7 @@ func (a *App) newGitCloneCommand() *cobra.Command {
 			if _, err := fmt.Fprintf(a.stdoutWriter(), "       => %s\n", args[1]); err != nil {
 				return err
 			}
-			status, message, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).GitClone(ctx, args[0], args[1], update)
+			status, message, err := (actions.Runner{Stdout: a.stdoutWriter(), Stderr: a.stderrWriter()}).GitClone(ctx, args[0], args[1], ref, update)
 			if err != nil {
 				logStepResult(label, status, message, err)
 				if stepErr := ui.StepEnd(a.stdoutWriter(), status, message); stepErr != nil {
@@ -196,6 +197,7 @@ func (a *App) newGitCloneCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&update, "update", false, "Pull an already cloned repo if the origin matches")
+	cmd.Flags().StringVarP(&ref, "branch", "b", "", "Check out this branch or tag (also for an already cloned repo)")
 	return cmd
 }
 

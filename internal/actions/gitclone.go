@@ -14,7 +14,7 @@ import (
 	"dfl/internal/runctx"
 )
 
-func (o Runner) GitClone(ctx runctx.Context, origin, target string, update bool) (runctx.ResultStatus, string, error) {
+func (o Runner) GitClone(ctx runctx.Context, origin, target, ref string, update bool) (runctx.ResultStatus, string, error) {
 	resolvedOrigin, err := resolveCloneOrigin(ctx.RepoRoot, origin)
 	if err != nil {
 		return runctx.StatusFailed, "", err
@@ -34,6 +34,9 @@ func (o Runner) GitClone(ctx runctx.Context, origin, target string, update bool)
 				return runctx.StatusFailed, "", gitErr
 			}
 			if sameCloneOrigin(currentOrigin, resolvedOrigin) {
+				if ref != "" {
+					return checkoutCloneRef(ctx, resolvedTarget, ref, update)
+				}
 				if update {
 					if ctx.DryRun {
 						return runctx.StatusSuccess, fmt.Sprintf("already cloned, would update %s", resolvedTarget), nil
@@ -71,7 +74,11 @@ func (o Runner) GitClone(ctx runctx.Context, origin, target string, update bool)
 		return runctx.StatusFailed, "", err
 	}
 
-	cmd := exec.Command("git", "clone", resolvedOrigin, resolvedTarget)
+	cloneArgs := []string{"clone"}
+	if ref != "" {
+		cloneArgs = append(cloneArgs, "-b", ref)
+	}
+	cmd := exec.Command("git", append(cloneArgs, resolvedOrigin, resolvedTarget)...)
 	var stdoutBuf bytes.Buffer
 	var stderrBuf bytes.Buffer
 	cmd.Stdout = io.MultiWriter(o.stdout(), &stdoutBuf)
@@ -80,6 +87,52 @@ func (o Runner) GitClone(ctx runctx.Context, origin, target string, update bool)
 		return runctx.StatusFailed, "", &OutputError{Err: err, Output: combinedOutput(stdoutBuf.String(), stderrBuf.String())}
 	}
 	return runctx.StatusSuccess, fmt.Sprintf("cloned %s into %s", resolvedOrigin, resolvedTarget), nil
+}
+
+// checkoutCloneRef moves an existing clone to ref (a branch or tag). With
+// update it fetches first, and pulls when ref is a branch.
+func checkoutCloneRef(ctx runctx.Context, dir, ref string, update bool) (runctx.ResultStatus, string, error) {
+	if ctx.DryRun {
+		return runctx.StatusSuccess, fmt.Sprintf("already cloned, would check out %s in %s", ref, dir), nil
+	}
+	before, err := gitHead(dir)
+	if err != nil {
+		return runctx.StatusFailed, "", err
+	}
+	if update {
+		if err := runGit(dir, "fetch", "--tags", "origin"); err != nil {
+			return runctx.StatusFailed, "failed to fetch", err
+		}
+	}
+	if err := runGit(dir, "checkout", ref); err != nil {
+		return runctx.StatusFailed, "failed to check out " + ref, err
+	}
+	if update && runGit(dir, "symbolic-ref", "-q", "HEAD") == nil {
+		if _, err := gitPull(dir); err != nil {
+			return runctx.StatusFailed, "failed to pull", err
+		}
+	}
+	after, err := gitHead(dir)
+	if err != nil {
+		return runctx.StatusFailed, "", err
+	}
+	if before == after {
+		return runctx.StatusSkipped, fmt.Sprintf("already at %s", ref), nil
+	}
+	return runctx.StatusSuccess, fmt.Sprintf("checked out %s", ref), nil
+}
+
+func runGit(dir string, args ...string) error {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return &OutputError{
+			Err:    fmt.Errorf("git %s failed: %w: %s", args[0], err, strings.TrimSpace(string(output))),
+			Output: string(output),
+		}
+	}
+	return nil
 }
 
 func gitOrigin(dir string) (string, error) {

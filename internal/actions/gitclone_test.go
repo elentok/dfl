@@ -14,7 +14,7 @@ func TestGitCloneSkipsWhenAlreadyClonedFromSameOrigin(t *testing.T) {
 	origin, worktree := createOriginAndWorktree(t)
 	target := cloneRepo(t, origin, "target")
 
-	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, false)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, "", false)
 	if err != nil {
 		t.Fatalf("GitClone returned error: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestGitCloneUpdatesWhenRequested(t *testing.T) {
 	gitRun(t, worktree, "commit", "-m", "update readme")
 	gitRun(t, worktree, "push", "origin", "HEAD")
 
-	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, true)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, "", true)
 	if err != nil {
 		t.Fatalf("GitClone returned error: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestGitCloneReportsUpToDateWhenPullHasNoChanges(t *testing.T) {
 	origin, _ := createOriginAndWorktree(t)
 	target := cloneRepo(t, origin, "target")
 
-	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, true)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, "", true)
 	if err != nil {
 		t.Fatalf("GitClone returned error: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestGitCloneReportsMultiplePulledCommits(t *testing.T) {
 	gitRun(t, worktree, "commit", "-m", "update readme twice")
 	gitRun(t, worktree, "push", "origin", "HEAD")
 
-	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, true)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, "", true)
 	if err != nil {
 		t.Fatalf("GitClone returned error: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestGitCloneReportsFailedToPull(t *testing.T) {
 
 	writeFile(t, target, "README.md", "local change\n")
 
-	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, true)
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, "", true)
 	if err == nil {
 		t.Fatal("GitClone returned nil error, want pull failure")
 	}
@@ -208,5 +208,42 @@ func gitRun(t *testing.T, dir string, args ...string) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %s failed: %v\n%s", strings.Join(args, " "), err, strings.TrimSpace(string(output)))
+	}
+}
+
+func TestGitCloneChecksOutRefOnFreshClone(t *testing.T) {
+	origin, worktree := createOriginAndWorktree(t)
+	gitRun(t, worktree, "tag", "v1")
+	writeFile(t, worktree, "README.md", "later\n")
+	gitRun(t, worktree, "add", "README.md")
+	gitRun(t, worktree, "commit", "-m", "later")
+	gitRun(t, worktree, "push", "origin", "HEAD", "--tags")
+	target := filepath.Join(t.TempDir(), "target")
+
+	status, _, err := Runner{}.GitClone(runctx.Context{}, origin, target, "v1", false)
+	if err != nil || status != runctx.StatusSuccess {
+		t.Fatalf("GitClone = %q, %v", status, err)
+	}
+	if data, _ := os.ReadFile(filepath.Join(target, "README.md")); string(data) == "later\n" {
+		t.Fatalf("README.md has post-tag content, want tag v1")
+	}
+}
+
+func TestGitCloneSwitchesExistingCloneToRef(t *testing.T) {
+	origin, worktree := createOriginAndWorktree(t)
+	gitRun(t, worktree, "tag", "v1")
+	writeFile(t, worktree, "README.md", "later\n")
+	gitRun(t, worktree, "add", "README.md")
+	gitRun(t, worktree, "commit", "-m", "later")
+	gitRun(t, worktree, "push", "origin", "HEAD", "--tags")
+	target := cloneRepo(t, origin, "target")
+
+	status, message, err := Runner{}.GitClone(runctx.Context{}, origin, target, "v1", false)
+	if err != nil || status != runctx.StatusSuccess || message != "checked out v1" {
+		t.Fatalf("GitClone = %q, %q, %v", status, message, err)
+	}
+	status, message, err = Runner{}.GitClone(runctx.Context{}, origin, target, "v1", true)
+	if err != nil || status != runctx.StatusSkipped || message != "already at v1" {
+		t.Fatalf("second GitClone = %q, %q, %v", status, message, err)
 	}
 }
