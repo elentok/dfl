@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.2.12] - 2026-11-19
+
+- Added `dfl git-clone -b/--branch <ref>` to check out a branch or tag. Fresh clones use
+  `git clone -b`, and an already cloned repo with the same origin is switched to the ref. With
+  `--update` it fetches tags first and only pulls when the ref is a branch.
+
 ## [0.2.11] - 2026-07-15
 
 - `dfl update` now prints the one-line-per-commit summary of what was pulled into the dotfiles
